@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accessibilité numérique pour PO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Un livre de poche numérique : une page courte à la fois, colonne de 65 caractères, pager fixe en bas, surligneur jaune pour les réflexes PO */
+  --paper: #FBFBFD;
+  --surface: #EEF1F6;
+  --ink: #141B24;
+  --muted: #4A5563;
+  --line: #D3D9E2;
+  --accent: #1D4ED8;
+  --accent-ink: #FFFFFF;
+  --marker: #FFE066;
+  --marker-ink: #1A1A1A;
+  --good: #0E6B3A;
+  --good-bg: #E6F4EC;
+  --bad: #B42318;
+  --bad-bg: #FCEBE9;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Bricolage Grotesque", "Atkinson Hyperlegible", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0F141A;
+    --surface: #1A222C;
+    --ink: #E9EEF4;
+    --muted: #AAB5C3;
+    --line: #2E3A48;
+    --accent: #8DB4FF;
+    --accent-ink: #0B1220;
+    --good: #7EDDA6;
+    --good-bg: #12291D;
+    --bad: #FF9F94;
+    --bad-bg: #2E1513;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0F141A;
+  --surface: #1A222C;
+  --ink: #E9EEF4;
+  --muted: #AAB5C3;
+  --line: #2E3A48;
+  --accent: #8DB4FF;
+  --accent-ink: #0B1220;
+  --good: #7EDDA6;
+  --good-bg: #12291D;
+  --bad: #FF9F94;
+  --bad-bg: #2E1513;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { height: 100%; scroll-padding-top: 96px; scroll-padding-bottom: 96px; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 480px) { body { font-size: 1.0625rem; } }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.skip {
+  position: absolute; left: 12px; top: -100px; z-index: 30;
+  background: var(--accent); color: var(--accent-ink);
+  padding: 12px 16px; border-radius: 8px; font-weight: 700; text-decoration: none;
+}
+.skip:focus { top: 12px; }
+
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+[tabindex="-1"]:focus { outline: none; }
+
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+
+/* Barre du haut */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-in {
+  max-width: 46rem; margin: 0 auto; padding: 10px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.topbar-titles { flex: 1; min-width: 0; }
+.book { margin: 0; font-size: 0.8125rem; color: var(--muted); font-weight: 700; letter-spacing: 0.02em; }
+.chap { margin: 0; font-size: 0.9375rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.progress { height: 4px; background: var(--line); }
+.progress-bar { height: 100%; width: 0; background: var(--accent); transition: width .25s ease; }
+@media (prefers-reduced-motion: reduce) { .progress-bar { transition: none; } }
+
+/* Boutons */
+.btn {
+  font: inherit; font-weight: 700; font-size: 1rem;
+  min-height: 48px; padding: 0 18px;
+  border-radius: 10px; border: 2px solid var(--muted);
+  background: transparent; color: var(--ink);
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn:hover { background: var(--surface); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { min-height: 44px; padding: 0 14px; font-size: 0.9375rem; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.linkish {
+  font: inherit; color: var(--accent); background: none; border: 0; padding: 4px 0;
+  text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+  min-height: 32px;
+}
+
+/* Page */
+main { flex: 1; width: 100%; }
+.page {
+  max-width: 40rem; margin: 0 auto; padding: 28px 20px 40px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .page.enter-next { animation: inNext .24s ease-out; }
+  .page.enter-prev { animation: inPrev .24s ease-out; }
+  @keyframes inNext { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+  @keyframes inPrev { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+}
+.eyebrow {
+  margin: 0 0 8px; font-size: 0.875rem; font-weight: 700; color: var(--muted);
+  letter-spacing: 0.02em;
+}
+h1, h2 { font-family: var(--font-display); text-wrap: balance; line-height: 1.15; }
+h1 { font-size: clamp(1.65rem, 1.2rem + 2vw, 2.3rem); margin: 0 0 20px; font-weight: 700; letter-spacing: -0.01em; }
+.h-small { font-size: 1.125rem; margin: 28px 0 8px; font-weight: 700; }
+.body > * + * { margin-top: 16px; }
+.body p, .body ul, .body ol { margin: 0; }
+.body p + p, .body ul + p, .body p + ul { margin-top: 14px; }
+ul, ol { padding-left: 1.25em; }
+li + li { margin-top: 8px; }
+.lede { font-size: 1.1875rem; color: var(--ink); margin: 0 0 16px; }
+.small { font-size: 0.9375rem; color: var(--muted); }
+strong { font-weight: 700; }
+
+/* Encadrés */
+.crit {
+  display: flex; gap: 12px; align-items: baseline;
+  background: var(--surface); border-left: 4px solid var(--accent);
+  border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 1rem;
+}
+.crit + .crit { margin-top: 8px !important; }
+.crit-n { font-family: var(--font-mono); font-weight: 700; color: var(--accent); white-space: nowrap; font-size: 0.9375rem; }
+.ex { border-radius: 10px; padding: 12px 16px; border: 1px solid; }
+.ex-bad { border-color: var(--bad); background: var(--bad-bg); }
+.ex-good { border-color: var(--good); background: var(--good-bg); }
+.ex-label { margin: 0 0 4px !important; font-weight: 700; font-size: 0.9375rem; }
+.ex-bad .ex-label { color: var(--bad); }
+.ex-good .ex-label { color: var(--good); }
+.ex p + p { margin-top: 8px; }
+.callout { border-radius: 10px; padding: 14px 16px; }
+.callout-label { margin: 0 0 6px !important; font-weight: 700; font-size: 0.875rem; letter-spacing: 0.02em; }
+.callout.real { background: var(--surface); }
+.callout.real .callout-label { color: var(--muted); }
+.callout.po { background: var(--marker); color: var(--marker-ink); }
+.callout.po a { color: var(--marker-ink); }
+.callout ul { margin-top: 6px; }
+.callout.gherkin { background: var(--surface); border: 1px dashed var(--muted); }
+.callout.gherkin .callout-label { color: var(--muted); }
+.callout pre, .code pre {
+  margin: 0; font-family: var(--font-mono); font-size: 0.9375rem; line-height: 1.55;
+  white-space: pre-wrap; word-break: break-word;
+}
+.code { background: var(--surface); border-radius: 10px; padding: 12px 16px; }
+.code-label { margin: 0 0 6px !important; font-size: 0.8125rem; font-weight: 700; color: var(--muted); }
+.stat { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+.stat-v { font-family: var(--font-display); font-size: 2.4rem; font-weight: 700; color: var(--accent); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-t { color: var(--ink); }
+
+/* Couverture */
+.cover h1 { font-size: clamp(2rem, 1.4rem + 3vw, 3rem); }
+.facts { list-style: none; padding: 0; margin: 24px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.facts li { margin: 0; background: var(--surface); border-radius: 10px; padding: 12px 14px; }
+.facts strong { display: block; font-family: var(--font-display); font-size: 1.75rem; color: var(--accent); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0 16px; }
+.theme-chip {
+  display: inline-block; margin: 0 0 8px; padding: 4px 12px; border-radius: 999px;
+  border: 2px solid var(--accent); color: var(--accent); font-weight: 700; font-size: 0.9375rem;
+}
+.toc-pages li { margin-top: 4px; }
+
+/* Quiz */
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+legend { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; line-height: 1.3; margin-bottom: 16px; padding: 0; }
+.opt { position: relative; margin-top: 10px; }
+.opt input { position: absolute; left: 16px; top: 18px; width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
+.opt label {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 16px 14px 52px; border: 2px solid var(--muted); border-radius: 10px; cursor: pointer;
+  min-height: 56px;
+}
+.opt input:checked + label { border-color: var(--accent); background: var(--surface); }
+.opt input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 3px; }
+.opt input:disabled + label { cursor: default; }
+.opt.is-right input + label { border-color: var(--good); background: var(--good-bg); }
+.opt.is-wrong input + label { border-color: var(--bad); background: var(--bad-bg); }
+.opt-tag { font-size: 0.875rem; font-weight: 700; }
+.is-right .opt-tag { color: var(--good); }
+.is-wrong .opt-tag { color: var(--bad); }
+.form-error { color: var(--bad); font-weight: 700; margin: 12px 0 0; }
+#quiz-form .btn { margin-top: 20px; }
+.feedback { margin-top: 20px; border-radius: 10px; padding: 14px 16px; border: 2px solid; }
+.feedback.ok { border-color: var(--good); background: var(--good-bg); }
+.feedback.ko { border-color: var(--bad); background: var(--bad-bg); }
+.feedback p { margin: 0; }
+.feedback p + p { margin-top: 8px; }
+.fb-title { font-weight: 700; font-size: 1.125rem; }
+.feedback.ok .fb-title { color: var(--good); }
+.feedback.ko .fb-title { color: var(--bad); }
+
+/* Bilans */
+.score { margin: 0 0 12px; }
+.score-v { display: block; font-family: var(--font-display); font-size: 3rem; font-weight: 700; color: var(--accent); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.result-list { padding-left: 0; list-style: none; }
+.result-list li { display: flex; gap: 12px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); margin: 0; }
+.r-status { font-weight: 700; font-size: 0.875rem; white-space: nowrap; min-width: 6.5em; }
+.r-ok .r-status { color: var(--good); }
+.r-ko .r-status { color: var(--bad); }
+.r-none .r-status { color: var(--muted); }
+.table-wrap { overflow-x: auto; margin-top: 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 1rem; }
+caption { text-align: left; font-weight: 700; margin-bottom: 8px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+td { font-variant-numeric: tabular-nums; white-space: nowrap; }
+thead th { color: var(--muted); font-size: 0.875rem; }
+tbody th { font-weight: 400; }
+
+/* Pager */
+.pager {
+  position: sticky; bottom: 0; z-index: 10;
+  background: var(--paper); border-top: 1px solid var(--line);
+}
+.pager-in {
+  max-width: 40rem; margin: 0 auto; padding: 10px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.counter { margin: 0; font-size: 0.9375rem; color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
+.hint { display: none; }
+@media (hover: hover) and (min-width: 700px) { .hint { display: block; font-size: 0.8125rem; color: var(--muted); margin: 0; } }
+
+/* Sommaire */
+dialog {
+  border: 0; padding: 0; border-radius: 14px; width: min(36rem, calc(100% - 24px));
+  max-height: calc(100% - 48px); background: var(--paper); color: var(--ink);
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+}
+dialog::backdrop { background: rgba(10, 14, 20, .55); }
+.toc-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--paper);
+}
+.toc-head h2 { margin: 0; font-size: 1.375rem; }
+#toc-list { list-style: none; margin: 0; padding: 8px; }
+#toc-list li { margin: 0; }
+.toc-item {
+  width: 100%; font: inherit; color: var(--ink); background: none; border: 0; border-radius: 10px;
+  display: grid; grid-template-columns: 2.2em 1fr auto; align-items: center; gap: 8px;
+  padding: 10px 12px; text-align: left; cursor: pointer; min-height: 48px;
+}
+.toc-item:hover { background: var(--surface); }
+.toc-item[aria-current="true"] { background: var(--surface); box-shadow: inset 4px 0 0 var(--accent); }
+.toc-num { font-family: var(--font-mono); color: var(--muted); font-weight: 700; }
+.toc-title { font-weight: 700; }
+.toc-meta { font-size: 0.875rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="topbar-titles">
+      <p class="book">Accessibilité numérique pour PO</p>
+      <p class="chap" id="chap-label">Couverture</p>
+    </div>
+    <button class="btn small" id="toc-open" type="button" aria-haspopup="dialog">Sommaire</button>
+  </div>
+  <div class="progress" aria-hidden="true"><div class="progress-bar" id="bar"></div></div>
+  <p class="sr-only" id="progress-text"></p>
+</header>
+
+<main id="content" tabindex="-1"></main>
+
+<nav class="pager" aria-label="Tourner les pages">
+  <div class="pager-in">
+    <button class="btn" id="prev" type="button"><span aria-hidden="true">←</span> Précédent</button>
+    <div>
+      <p class="counter" id="counter"></p>
+      <p class="hint">Flèches ← → du clavier</p>
+    </div>
+    <button class="btn primary" id="next" type="button">Suivant <span aria-hidden="true">→</span></button>
+  </div>
+</nav>
+
+<dialog id="toc" aria-labelledby="toc-title">
+  <div class="toc-head">
+    <h2 id="toc-title">Sommaire</h2>
+    <button class="btn small" id="toc-close" type="button">Fermer</button>
+  </div>
+  <ol id="toc-list"></ol>
+</dialog>
+
+<script>
+/* ---------- Helpers de rédaction ---------- */
+const BOOK = [];
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const wrap = t => (t.trim().startsWith('<') ? t : '<p>' + t + '</p>');
+const P = t => '<p>' + t + '</p>';
+const UL = a => '<ul>' + a.map(i => '<li>' + i + '</li>').join('') + '</ul>';
+const OL = a => '<ol>' + a.map(i => '<li>' + i + '</li>').join('') + '</ol>';
+const CRIT = (n, t) => '<p class="crit"><span class="crit-n"><span class="sr-only">Critère </span>RGAA ' + n + '</span><span class="crit-t">' + t + '</span></p>';
+const DONT = t => '<div class="ex ex-bad"><p class="ex-label"><span aria-hidden="true">✕ </span>À éviter</p>' + wrap(t) + '</div>';
+const DO = t => '<div class="ex ex-good"><p class="ex-label"><span aria-hidden="true">✓ </span>À faire</p>' + wrap(t) + '</div>';
+const REAL = (who, t) => '<div class="callout real"><p class="callout-label">Dans la vraie vie · ' + who + '</p>' + wrap(t) + '</div>';
+const PO = t => '<div class="callout po"><p class="callout-label">Réflexe PO</p>' + wrap(t) + '</div>';
+const STAT = (v, t) => '<p class="stat"><span class="stat-v">' + v + '</span><span class="stat-t">' + t + '</span></p>';
+const CODE = t => '<div class="code"><p class="code-label">Exemple de code</p><pre><code>' + esc(t) + '</code></pre></div>';
+const GH = t => '<div class="callout gherkin"><p class="callout-label">Critère d’acceptation</p><pre>' + esc(t) + '</pre></div>';
+const A = (href, text) => '<a href="' + href + '" rel="noopener">' + text + '</a>';
+const pg = (t, ...blocks) => ({ t, h: blocks.join('') });
+const Q = (q, o, a, e) => ({ q, o, a, e });
+const chapter = c => BOOK.push(c);
+</script>
+
+<script>
+chapter({
+  id: 'bienvenue',
+  unnumbered: true,
+  title: 'Mode d’emploi',
+  short: 'Comment lire ce guide, et comment repérer les encadrés.',
+  pages: [
+    pg('Un guide en petits morceaux',
+      P(`Ce guide forme un Product Owner à l’accessibilité numérique, de la question « pourquoi » jusqu’à la recette. Chaque page se lit en une minute environ.`),
+      P(`Il suit le RGAA 4.1.2, le référentiel français : chacune de ses 13 thématiques a son chapitre, avec des exemples concrets tirés de sites et d’applications connus.`),
+      UL([
+        `Pour tourner les pages : les boutons en bas, les flèches ← → du clavier, ou un glissement du doigt.`,
+        `Pour sauter à un chapitre : le bouton <strong>Sommaire</strong> en haut.`,
+        `À la fin de chaque chapitre : un quiz corrigé. Ton score reste enregistré dans ce navigateur.`
+      ])
+    ),
+    pg('Les encadrés à repérer',
+      CRIT('1.1', `Le numéro et l’intitulé d’un critère du RGAA. Les intitulés sont parfois simplifiés pour rester lisibles.`),
+      DONT(`Ce qu’on voit trop souvent, et pourquoi ça bloque.`),
+      DO(`La bonne pratique correspondante.`),
+      REAL('Un site ou une app', `Comment un produit connu applique la règle, ou l’oublie.`),
+      PO(`Ce que tu fais concrètement dans ton rôle : une question à poser, un critère d’acceptation à écrire.`)
+    ),
+    pg('Ce guide applique ce qu’il enseigne',
+      P(`Navigation complète au clavier, focus visible, contrastes vérifiés, aucune information portée par la couleur seule, titres structurés, quiz utilisables au lecteur d’écran : ce guide est lui-même un exemple.`),
+      P(`La police, Atkinson Hyperlegible, a été dessinée par le Braille Institute pour que chaque lettre reste facile à distinguer, même avec une vue faible.`),
+      PO(`Ouvre ce guide avec VoiceOver ou TalkBack activé. Tu entendras comment une interface bien construite est restituée, et tu auras un point de comparaison pour ton propre produit.`)
+    )
+  ]
+});
+
+chapter({
+  id: 'fondamentaux',
+  title: 'Les fondamentaux',
+  short: 'Qui est concerné, comment on navigue avec un handicap, et pourquoi c’est une affaire de produit.',
+  pages: [
+    pg('L’accessibilité en une phrase',
+      P(`Un service numérique est accessible quand toute personne, quel que soit son handicap, peut le percevoir, le comprendre, y naviguer et interagir avec lui.`),
+      P(`Ce n’est pas une fonctionnalité de plus. C’est une qualité du produit, comme la performance ou la sécurité : elle se conçoit dès le départ, et elle se dégrade à chaque mise en production si personne n’y veille.`),
+      PO(`Traite l’accessibilité comme une exigence permanente, présente dans chaque US, et non comme un ticket à faire « un jour ».`)
+    ),
+    pg('Qui est concerné ?',
+      STAT('1,3 milliard', `de personnes vivent avec un handicap important dans le monde, soit environ 1 personne sur 6 (OMS).`),
+      UL([
+        `<strong>Visuel</strong> : cécité, malvoyance, daltonisme.`,
+        `<strong>Auditif</strong> : surdité, malentendance.`,
+        `<strong>Moteur</strong> : difficulté à utiliser une souris, tremblements, paralysie.`,
+        `<strong>Cognitif</strong> : dyslexie, troubles de l’attention, de la mémoire ou du langage.`,
+        `<strong>Psychique et neurologique</strong> : anxiété, épilepsie photosensible.`
+      ]),
+      P(`Beaucoup de handicaps sont invisibles. La plupart ne sont pas de naissance : ils arrivent avec l’âge, la maladie ou un accident.`)
+    ),
+    pg('Permanent, temporaire, situationnel',
+      P(`Une même difficulté peut être permanente, temporaire ou liée à la situation du moment.`),
+      UL([
+        `<strong>Un seul bras disponible</strong> : amputation, bras dans le plâtre, un bébé dans les bras.`,
+        `<strong>Voir l’écran</strong> : cécité, suites d’une opération des yeux, plein soleil sur le téléphone.`,
+        `<strong>Entendre</strong> : surdité, otite, vidéo regardée dans le métro sans écouteurs.`
+      ]),
+      P(`Ce modèle, popularisé par la démarche Inclusive Design de Microsoft, montre qu’une solution pensée pour quelques-uns sert à beaucoup. Les sous-titres en sont le meilleur exemple.`)
+    ),
+    pg('Les aides techniques',
+      UL([
+        `<strong>Lecteur d’écran</strong> : lit à voix haute ou en braille ce qui est affiché (VoiceOver, TalkBack, NVDA, JAWS).`,
+        `<strong>Loupe et zoom</strong> : agrandit une partie de l’écran ou toute la page.`,
+        `<strong>Clavier seul ou contacteurs</strong> : pour qui ne peut pas utiliser de souris ni d’écran tactile.`,
+        `<strong>Commande vocale</strong> : « Touche Valider », « Fais défiler vers le bas ».`,
+        `<strong>Sous-titres et transcriptions</strong> pour l’audio et la vidéo.`,
+        `<strong>Réglages du système</strong> : taille du texte, contraste renforcé, réduction des animations.`
+      ]),
+      PO(`Ton site ne parle pas directement à l’utilisateur : il parle à ces outils. S’il est mal construit, l’outil n’a rien de correct à restituer.`)
+    ),
+    pg('Comment un aveugle parcourt une page',
+      P(`Un utilisateur de lecteur d’écran ne lit pas une page de haut en bas. Il saute de titre en titre, de lien en lien, de zone en zone, souvent avec une voix réglée bien plus vite qu’une parole normale.`),
+      STAT('71,6 %', `des utilisateurs de lecteur d’écran naviguent d’abord par les titres pour explorer une longue page (enquête WebAIM, 2024).`),
+      P(`Conséquence : une page sans vrais titres, ou remplie de liens « Cliquez ici », devient un labyrinthe.`),
+      REAL('Ton téléphone', `Active VoiceOver (iPhone) ou TalkBack (Android) dans les réglages d’accessibilité, après avoir repéré comment le couper. Essaie de commander un repas les yeux fermés pendant cinq minutes : tu en apprendras plus qu’avec n’importe quel cours.`)
+    ),
+    pg('L’état du web en 2026',
+      STAT('95,9 %', `des pages d’accueil du million de sites les plus visités ont des erreurs d’accessibilité détectables automatiquement (WebAIM Million, février 2026).`),
+      UL([
+        `Texte pas assez contrasté : <strong>83,9 %</strong> des pages`,
+        `Images sans alternative textuelle : <strong>53,1 %</strong>`,
+        `Champs de formulaire sans étiquette : <strong>51 %</strong>`,
+        `Liens vides : <strong>46 %</strong>`,
+        `Boutons vides : <strong>31 %</strong>`
+      ]),
+      P(`Ces erreurs reviennent chaque année et sont simples à éviter. Elles relèvent souvent de décisions de conception, donc du produit.`)
+    ),
+    pg('Les 4 principes : POUR',
+      P(`Toutes les règles découlent de 4 principes, issus des WCAG.`),
+      UL([
+        `<strong>Perceptible</strong> : l’information peut être vue, entendue ou touchée (alternatives aux images, sous-titres, contrastes).`,
+        `<strong>Utilisable</strong> : tout fonctionne au clavier, sans limite de temps piégeante, sans risque de crise.`,
+        `<strong>Compréhensible</strong> : textes clairs, comportement prévisible, aide en cas d’erreur.`,
+        `<strong>Robuste</strong> : le code est interprété correctement par les navigateurs et les aides techniques.`
+      ]),
+      PO(`Quand une règle te paraît obscure, demande-toi à quel principe elle se rattache. Tu retrouveras presque toujours la personne qu’elle protège.`)
+    ),
+    pg('Cinq idées reçues',
+      UL([
+        `<strong>« C’est pour les aveugles. »</strong> Le handicap visuel n’est qu’une partie des besoins : motricité, audition, cognition comptent autant.`,
+        `<strong>« Ça coûte cher. »</strong> Ce qui coûte cher, c’est de corriger après coup. Prévue dès la conception, l’accessibilité coûte peu.`,
+        `<strong>« Ça rend le design moche. »</strong> Le site du gouvernement britannique, GOV.UK, est sobre, élégant et réputé pour son accessibilité.`,
+        `<strong>« Un widget d’accessibilité suffit. »</strong> Ces surcouches ajoutées par un script ne corrigent pas le code et ne rendent pas un site conforme.`,
+        `<strong>« On fera un audit à la fin. »</strong> Un audit constate, il ne corrige rien.`
+      ])
+    )
+  ],
+  quiz: [
+    Q(`Selon l’OMS, quelle part de la population mondiale vit avec un handicap important ?`,
+      [`1 personne sur 50`, `1 personne sur 20`, `1 personne sur 6`, `1 personne sur 2`], 2,
+      `Environ 1,3 milliard de personnes, soit 16 %. Et la part augmente avec le vieillissement de la population.`),
+    Q(`Comment la majorité des utilisateurs de lecteur d’écran explorent-ils d’abord une longue page ?`,
+      [`En lisant tout de haut en bas`, `En naviguant de titre en titre`, `En parcourant les images`, `En utilisant le plan du site`], 1,
+      `71,6 % naviguent par les titres selon l’enquête WebAIM. D’où l’importance de vrais titres bien hiérarchisés.`),
+    Q(`Une personne regarde une vidéo dans le métro sans écouteurs. Sa situation de handicap est…`,
+      [`permanente`, `temporaire`, `situationnelle`, `inexistante`], 2,
+      `C’est une situation passagère liée au contexte. Les sous-titres conçus pour les personnes sourdes l’aident aussi.`),
+    Q(`Quelle est l’erreur la plus fréquente sur les pages d’accueil selon le WebAIM Million 2026 ?`,
+      [`Les images sans alternative`, `Le texte pas assez contrasté`, `L’absence de titres`, `Les vidéos sans sous-titres`], 1,
+      `83,9 % des pages ont du texte trop peu contrasté. C’est une décision de charte graphique, donc un sujet produit et design.`),
+    Q(`Que signifie le principe « Robuste » ?`,
+      [`Le site ne tombe jamais en panne`, `Le code est interprété correctement par les navigateurs et les aides techniques`, `Le site résiste aux attaques informatiques`, `Le site fonctionne hors connexion`], 1,
+      `Un code propre et standard permet aux aides techniques, présentes et futures, de restituer correctement le contenu.`),
+    Q(`Un widget « accessibilité » ajouté par un script tiers…`,
+      [`rend le site conforme au RGAA`, `remplace un audit`, `ne corrige pas le code et ne garantit pas la conformité`, `est obligatoire depuis 2025`], 2,
+      `Ces surcouches ne réparent pas les défauts de fond (structure, formulaires, clavier). Elles gênent même parfois les aides techniques.`)
+  ]
+});
+
+chapter({
+  id: 'cadre',
+  title: 'Normes et obligations',
+  short: 'WCAG, EN 301 549, RGAA, European Accessibility Act : qui fait quoi, et ce que la loi impose.',
+  pages: [
+    pg('Trois étages de règles',
+      P(`Les règles s’emboîtent comme des poupées russes.`),
+      UL([
+        `<strong>WCAG</strong> (W3C) : les règles techniques internationales, en anglais. Versions 2.0, 2.1 et 2.2.`,
+        `<strong>EN 301 549</strong> : la norme européenne. Pour le web, elle reprend les WCAG 2.1 niveau AA, et elle couvre aussi les logiciels et les applications.`,
+        `<strong>RGAA</strong> : la méthode française pour vérifier la conformité, publiée par la Dinum. Chaque critère y est accompagné de tests précis.`
+      ]),
+      P(`En France, on parle RGAA. Ailleurs en Europe, on parle WCAG. Le fond est très proche.`)
+    ),
+    pg('Les niveaux A, AA et AAA',
+      UL([
+        `<strong>A</strong> : le minimum, sans lequel certaines personnes sont totalement bloquées.`,
+        `<strong>AA</strong> : le niveau exigé par la loi en Europe.`,
+        `<strong>AAA</strong> : un niveau renforcé, rarement visé pour un site entier.`
+      ]),
+      P(`Le RGAA 4.1 couvre les niveaux A et AA sans les distinguer : tous ses critères sont à respecter.`),
+      PO(`Quand un prestataire annonce « niveau AA », il parle du minimum légal, pas d’un bonus.`)
+    ),
+    pg('Le RGAA en chiffres',
+      UL([
+        `<strong>13 thématiques</strong> : images, cadres, couleurs, multimédia, tableaux, liens, scripts, éléments obligatoires, structuration, présentation, formulaires, navigation, consultation.`,
+        `<strong>106 critères</strong>, formulés comme des questions.`,
+        `En moyenne <strong>2,5 tests</strong> par critère.`,
+        `Pour chaque critère : conforme, non conforme ou non applicable.`
+      ]),
+      P(`Un critère est non conforme s’il échoue sur au moins une page de l’échantillon audité. Le taux de conformité se calcule sur les critères applicables.`)
+    ),
+    pg('L’European Accessibility Act',
+      P(`Depuis le 28 juin 2025, la directive européenne 2019/882, dite EAA, impose l’accessibilité au secteur privé pour une liste de produits et de services.`),
+      UL([
+        `Commerce en ligne`,
+        `Services bancaires aux consommateurs`,
+        `Transport de voyageurs : information et billetterie`,
+        `Livres numériques`,
+        `Communications électroniques`,
+        `Terminaux : ordinateurs, smartphones, distributeurs, bornes`
+      ]),
+      P(`Pour les services, les entreprises de moins de 10 personnes dont le chiffre d’affaires ou le bilan ne dépasse pas 2 M€ sont exemptées.`)
+    ),
+    pg('Qui contrôle, quelles sanctions',
+      P(`En France, la DGCCRF contrôle le commerce en ligne et les services aux consommateurs. L’Arcom contrôle notamment le secteur public.`),
+      UL([
+        `<strong>DGCCRF</strong> : injonction de mise en conformité, astreinte, contravention de 7 500 € par infraction pour une société (15 000 € en récidive).`,
+        `<strong>Arcom</strong> : jusqu’à 50 000 € par service non conforme pour les organismes concernés.`,
+        `<strong>Juge</strong> : injonction sous astreinte, à la demande d’associations.`
+      ]),
+      REAL('Carrefour, juin 2026', `Le tribunal judiciaire de Caen a donné six mois à Carrefour pour rendre son site accessible. L’enseigne mettait en avant un taux de conformité de 71 % : le tribunal l’a jugé insuffisant.`)
+    ),
+    pg('Ce qu’il faut publier',
+      P(`Un service soumis à l’obligation publie une déclaration d’accessibilité, accessible depuis toutes les pages, souvent par un lien en pied de page.`),
+      UL([
+        `le taux de conformité mesuré par un audit ;`,
+        `la liste des contenus non accessibles et les dérogations ;`,
+        `un moyen de signaler un problème ;`,
+        `les voies de recours.`
+      ]),
+      P(`Trois mentions possibles : totalement conforme (100 %), partiellement conforme (au moins 50 %), non conforme (moins de 50 %, ou pas d’audit).`),
+      REAL('Sites publics', `Regarde le pied de page de service-public.fr : le niveau de conformité y est affiché, avec un lien vers la déclaration complète.`)
+    ),
+    pg('Ce qui arrive : le RGAA 5',
+      P(`La Dinum a annoncé le RGAA 5 pour la fin de l’année 2026.`),
+      UL([
+        `Passage aux <strong>WCAG 2.2</strong>, qui ajoutent 9 critères, dont 6 aux niveaux A et AA : focus non masqué, alternative au glisser-déposer, taille minimale des cibles, aide cohérente, saisie redondante, authentification accessible.`,
+        `Les applications mobiles natives et les documents bureautiques explicitement couverts.`,
+        `Les déclarations existantes restent valables 18 mois après la publication.`
+      ]),
+      PO(`Inutile d’attendre : les nouveautés des WCAG 2.2 sont déjà de bonnes pratiques. Ajoute-les dès maintenant à tes checklists.`)
+    )
+  ],
+  quiz: [
+    Q(`Quel référentiel sert à vérifier la conformité en France ?`,
+      [`Le RGAA`, `Le RGPD`, `L’ISO 9001`, `Les WCAG 3.0`], 0,
+      `Le RGAA, publié par la Dinum, traduit la norme européenne en critères et en tests vérifiables.`),
+    Q(`Combien de critères compte le RGAA 4.1.2 ?`,
+      [`50`, `78`, `106`, `250`], 2,
+      `106 critères répartis en 13 thématiques, avec en moyenne 2,5 tests chacun.`),
+    Q(`Depuis quand l’European Accessibility Act s’applique-t-il au commerce en ligne ?`,
+      [`1er janvier 2020`, `28 juin 2025`, `1er janvier 2027`, `Seulement à partir de 2030`], 1,
+      `Le 28 juin 2025. Pour un site déjà en ligne, il n’y a pas de période de transition.`),
+    Q(`Un audit mesure 62 % de critères respectés. Quelle mention doit être affichée ?`,
+      [`Totalement conforme`, `Partiellement conforme`, `Non conforme`, `Aucune, la mention est facultative`], 1,
+      `De 50 % à 99 %, la mention est « partiellement conforme ». En dessous de 50 %, « non conforme ».`),
+    Q(`Que doit contenir une déclaration d’accessibilité ?`,
+      [`Le nom de l’agence qui a fait le site`, `Le taux de conformité, les contenus non accessibles, un moyen de contact et les voies de recours`, `Le code source des pages`, `Uniquement un logo de conformité`], 1,
+      `Elle informe l’utilisateur de ce qui fonctionne, de ce qui ne fonctionne pas, et de comment obtenir de l’aide.`),
+    Q(`Le niveau AA, c’est…`,
+      [`un bonus optionnel`, `le niveau exigé par la loi en Europe`, `le niveau le plus exigeant`, `un niveau réservé au secteur public`], 1,
+      `A est le minimum absolu, AA est le niveau légal, AAA est un niveau renforcé.`)
+  ]
+});
+
+chapter({
+  id: 'images',
+  title: 'Images',
+  theme: 'Thématique RGAA 1 · 9 critères',
+  short: 'Dire ce qu’apporte une image, ou la faire ignorer quand elle n’apporte rien.',
+  pages: [
+    pg('Deux familles d’images',
+      P(`Pour chaque image, une seule question : apporte-t-elle une information ?`),
+      UL([
+        `<strong>Image porteuse d’information</strong> : photo de produit, graphique, logo, icône seule dans un bouton. Elle a besoin d’une alternative textuelle.`,
+        `<strong>Image de décoration</strong> : fond, illustration d’ambiance, icône placée à côté d’un texte qui dit déjà la même chose. Elle doit être ignorée par les aides techniques.`
+      ]),
+      CRIT('1.1', `Chaque image porteuse d’information a-t-elle une alternative textuelle ?`),
+      CRIT('1.2', `Chaque image de décoration est-elle correctement ignorée par les technologies d’assistance ?`)
+    ),
+    pg('Écrire une bonne alternative',
+      CRIT('1.3', `Pour chaque image porteuse d’information, l’alternative textuelle est-elle pertinente ?`),
+      P(`L’alternative dit ce que l’image apporte dans son contexte, pas ce qu’elle montre pixel par pixel.`),
+      DONT(`« image », « photo », « IMG_4032.jpg », ou un logo décrit comme « logo bleu avec une étoile ».`),
+      DO(`Logo cliquable : « Nom du site, accueil ». Icône loupe dans un bouton : « Rechercher ». Photo de produit : ce qui la distingue (couleur, détail, angle) quand le nom est déjà écrit à côté.`),
+      P(`Inutile de commencer par « Image de… » : le lecteur d’écran annonce déjà qu’il s’agit d’une image.`)
+    ),
+    pg('Dans le code, en deux lignes',
+      P(`Tu n’as pas à coder, mais savoir lire ces lignes aide beaucoup en recette.`),
+      CODE(`<img src="canape.jpg" alt="Canapé 3 places en velours vert">
+<img src="vague.svg" alt="">`),
+      P(`Un attribut alt vide signifie « image décorative, ignore-la ». Une image sans attribut alt du tout est une erreur : certains lecteurs d’écran lisent alors le nom du fichier à voix haute.`)
+    ),
+    pg('Graphiques et infographies',
+      CRIT('1.6', `Chaque image porteuse d’information a-t-elle, si nécessaire, une description détaillée ?`),
+      CRIT('1.7', `Pour chaque image ayant une description détaillée, cette description est-elle pertinente ?`),
+      P(`Un graphique d’évolution ne se résume pas en une phrase. Il lui faut une description détaillée : un tableau de données, ou un texte qui donne les chiffres clés.`),
+      REAL('Our World in Data', `Chaque graphique du site propose un onglet « Table » qui affiche les mêmes données sous forme de tableau. C’est exactement l’esprit d’une description détaillée.`),
+      PO(`Pour chaque graphique d’un tableau de bord, ajoute dans l’US : « les données sont aussi consultables sous forme de tableau ».`)
+    ),
+    pg('Le texte dans les images',
+      CRIT('1.8', `Chaque image texte porteuse d’information doit, si possible, être remplacée par du texte stylé.`),
+      DONT(`Une bannière « -30 % sur tout le site jusqu’à dimanche » exportée en JPG : floue au zoom, muette pour un lecteur d’écran, intraduisible, et impossible à modifier sans graphiste.`),
+      DO(`Le texte écrit en HTML, posé sur une image de fond. Il reste net au zoom, et l’équipe marketing peut le changer seule.`),
+      CRIT('1.9', `Chaque légende d’image est-elle, si nécessaire, correctement reliée à l’image correspondante ?`)
+    ),
+    pg('Le cas des CAPTCHA',
+      CRIT('1.4', `Pour chaque image utilisée comme CAPTCHA, l’alternative permet-elle d’identifier sa nature et sa fonction ?`),
+      CRIT('1.5', `Pour chaque CAPTCHA, une solution d’accès alternatif est-elle présente ?`),
+      P(`Les CAPTCHA arrivent en tête des problèmes cités par les utilisateurs de lecteur d’écran dans les enquêtes WebAIM, et ce depuis des années.`),
+      REAL('reCAPTCHA de Google', `Le célèbre « sélectionnez les feux tricolores » propose une alternative audio (icône casque). Mais l’audio exclut à son tour les personnes sourdes-aveugles.`),
+      PO(`Préfère une protection invisible, comme l’analyse du comportement ou un champ piège caché. Si un CAPTCHA est inévitable, exige deux alternatives de nature différente.`)
+    ),
+    pg('Les réseaux sociaux montrent la voie',
+      REAL('Instagram, X, Mastodon', `Ces plateformes permettent d’ajouter un texte alternatif à chaque image publiée. Sur X, un badge « ALT » signale les images décrites.`),
+      REAL('Facebook et Instagram', `Ils génèrent aussi des descriptions automatiques, du type « Peut-être une image de 2 personnes ». Utile, mais souvent trop vague pour comprendre l’intention de la photo.`),
+      PO(`Si ton produit permet de publier des images (back-office, CMS, marketplace, profil), le champ « texte alternatif » doit exister et être expliqué à ceux qui publient. C’est une US à part entière.`)
+    ),
+    pg('L’IA et les alternatives',
+      P(`Les outils d’IA proposent des descriptions automatiques. Pratique pour un premier jet sur un gros catalogue.`),
+      P(`Mais l’IA ne connaît pas l’intention de la page. Sur une fiche produit, elle décrira le décor plutôt que le détail qui fait la différence. Sur une image décorative, elle produira une description inutile.`),
+      DO(`IA pour proposer, humain pour valider. Et une règle claire dans le CMS : décrire ce qui compte pour la personne qui ne voit pas l’image.`)
+    )
+  ],
+  quiz: [
+    Q(`Une icône « poubelle » seule dans un bouton de suppression. Quelle alternative ?`,
+      [`Aucune, alt vide`, `« icône poubelle »`, `« Supprimer l’article »`, `Pas d’attribut alt`], 2,
+      `L’icône est porteuse d’information : son alternative dit l’action qu’elle déclenche, pas son dessin.`),
+    Q(`Une illustration d’ambiance accompagne le titre « Nos engagements ». Que faire ?`,
+      [`La décrire en détail`, `Lui donner un alt vide`, `Écrire alt="illustration"`, `La supprimer`], 1,
+      `Elle n’apporte pas d’information : un alt vide la fait ignorer par les lecteurs d’écran.`),
+    Q(`Que se passe-t-il quand une image n’a pas d’attribut alt du tout ?`,
+      [`Elle est ignorée proprement`, `Le lecteur d’écran peut lire le nom du fichier`, `Le navigateur génère une description`, `Rien de particulier`], 1,
+      `Sans alt, certains lecteurs d’écran annoncent le nom du fichier, par exemple « IMG 4 0 3 2 point jpg ».`),
+    Q(`Un graphique montre l’évolution des ventes sur 12 mois. De quoi a-t-il besoin ?`,
+      [`D’une alternative courte, cela suffit`, `D’une description détaillée, par exemple un tableau de données`, `De rien, c’est un contenu visuel`, `D’une légende en couleur`], 1,
+      `Les chiffres doivent être accessibles autrement que visuellement : un tableau ou un texte avec les valeurs clés.`),
+    Q(`Pourquoi éviter une bannière promotionnelle dont le texte fait partie de l’image ?`,
+      [`Elle pèse trop lourd`, `Elle est illisible au zoom et pour un lecteur d’écran, et difficile à mettre à jour`, `Les images sont interdites`, `Elle n’est pas indexée sur mobile`], 1,
+      `Le texte stylé en HTML reste net, lisible par les aides techniques, traduisible et modifiable.`)
+  ]
+});
+
+chapter({
+  id: 'couleurs',
+  title: 'Couleurs',
+  theme: 'Thématique RGAA 3 · 3 critères',
+  short: 'Assez de contraste partout, et jamais d’information portée par la couleur seule.',
+  pages: [
+    pg('Jamais la couleur seule',
+      CRIT('3.1', `Dans chaque page web, l’information ne doit pas être donnée uniquement par la couleur.`),
+      P(`Environ 8 % des hommes ont un trouble de la vision des couleurs. Un écran en plein soleil efface aussi les nuances.`),
+      DONT(`Des champs en erreur seulement entourés de rouge. Une courbe verte et une rouge sans autre repère. « Les champs en rouge sont obligatoires. »`),
+      DO(`Un texte « Erreur : saisis ton adresse e-mail » et une icône, en plus du rouge. Des courbes avec des formes ou des étiquettes différentes. Un astérisque expliqué en début de formulaire.`)
+    ),
+    pg('Le contraste du texte',
+      CRIT('3.2', `Le contraste entre la couleur du texte et celle de son arrière-plan est-il suffisamment élevé ?`),
+      UL([
+        `Texte courant : rapport d’au moins <strong>4,5:1</strong>.`,
+        `Grand texte (24 px et plus, ou 18,5 px et plus en gras) : au moins <strong>3:1</strong>.`,
+        `Logos et texte purement décoratif : non concernés.`
+      ]),
+      P(`Le rapport va de 1:1 (blanc sur blanc) à 21:1 (noir sur blanc). Un gris #999999 sur fond blanc n’atteint que 2,8:1 : trop faible pour du texte courant.`),
+      STAT('83,9 %', `des pages d’accueil ont au moins un texte trop peu contrasté (WebAIM Million 2026).`)
+    ),
+    pg('Le contraste des composants',
+      CRIT('3.3', `Les couleurs des composants d’interface et des éléments graphiques porteurs d’information sont-elles suffisamment contrastées ?`),
+      P(`Même logique pour ce qui n’est pas du texte, avec un seuil de <strong>3:1</strong> : bordure d’un champ de saisie, icône seule, case cochée, indicateur de focus, portions d’un graphique.`),
+      DONT(`Un champ de saisie dont la bordure gris très pâle se distingue à peine du fond de la page.`),
+      DO(`Une bordure contrastée à 3:1 au moins, ou un fond de champ nettement différent.`),
+      P(`Les éléments désactivés sont exemptés. Raison de plus pour ne pas en abuser : un bouton grisé ne dit pas pourquoi il l’est.`)
+    ),
+    pg('Des exemples connus',
+      REAL('GitHub', `GitHub propose des thèmes pensés pour les daltoniens (protanopie, deutéranopie, tritanopie). Les couleurs du graphe de contributions et des comparaisons de code changent pour rester distinguables.`),
+      REAL('Les systèmes d’exploitation', `iOS, Android, Windows et macOS proposent filtres de couleur, contraste renforcé et mode sombre. Ton produit doit rester lisible dans ces modes, mode sombre compris, où les contrastes sont souvent oubliés.`)
+    ),
+    pg('Le réflexe couleurs',
+      PO(`Fais vérifier la palette une seule fois avec le design : chaque couple texte et fond validé devient un token du design system. Ensuite, plus personne n’improvise un gris.`),
+      UL([
+        `Outils : Colour Contrast Analyser, ou un plugin de contraste dans Figma.`,
+        `Critère d’acceptation type : « Textes à 4,5:1, grands textes et composants à 3:1, en thème clair et sombre. »`,
+        `Pense à tous les états : survol, focus, erreur, sélection.`
+      ])
+    )
+  ],
+  quiz: [
+    Q(`Quel rapport de contraste minimum pour un texte courant ?`,
+      [`2:1`, `3:1`, `4,5:1`, `7:1`], 2,
+      `4,5:1 pour le texte courant, 3:1 pour les grands textes et les composants d’interface.`),
+    Q(`Un formulaire signale les erreurs uniquement par une bordure rouge. Quel est le problème ?`,
+      [`Le rouge est trop vif`, `L’information passe uniquement par la couleur`, `Le rouge est interdit`, `Il n’y a pas de problème`], 1,
+      `Une personne daltonienne ou aveugle ne perçoit pas l’erreur. Il faut un message en texte.`),
+    Q(`Quel contraste minimum pour la bordure d’un champ de saisie ?`,
+      [`1,5:1`, `3:1`, `4,5:1`, `Aucun`], 1,
+      `Les composants d’interface et les éléments graphiques porteurs d’information demandent 3:1.`),
+    Q(`Un texte courant gris #999999 sur fond blanc est-il conforme ?`,
+      [`Oui`, `Non, le rapport est d’environ 2,8:1`, `Oui, s’il est en gras`, `Cela dépend de l’écran`], 1,
+      `2,8:1 est sous le seuil de 4,5:1. Même en gras, il faudrait 3:1 et une taille d’au moins 18,5 px.`),
+    Q(`Le moyen le plus durable d’éviter les problèmes de contraste ?`,
+      [`Vérifier chaque page avant chaque mise en production`, `Valider les couples de couleurs dans le design system`, `Proposer un bouton « contraste élevé »`, `Attendre les retours des utilisateurs`], 1,
+      `Une palette validée une fois et partagée par tous évite que les erreurs reviennent à chaque nouvel écran.`)
+  ]
+});
+
+chapter({
+  id: 'multimedia',
+  title: 'Multimédia et cadres',
+  theme: 'Thématiques RGAA 4 et 2 · 13 + 2 critères',
+  short: 'Sous-titres, transcriptions, audiodescription, lecteurs vidéo, et contenus intégrés dans des cadres.',
+  pages: [
+    pg('Trois alternatives à connaître',
+      UL([
+        `<strong>Sous-titres</strong> : le texte des dialogues et des sons utiles, synchronisé (« [sonnerie de téléphone] »). Pour les personnes sourdes ou malentendantes.`,
+        `<strong>Transcription textuelle</strong> : tout le contenu écrit sur une page. Pour les personnes sourdes-aveugles, qui la lisent en braille, et pour qui préfère lire.`,
+        `<strong>Audiodescription</strong> : une voix décrit ce qui se passe à l’écran entre les dialogues. Pour les personnes aveugles.`
+      ]),
+      CRIT('4.1', `Chaque média temporel pré-enregistré a-t-il, si nécessaire, une transcription textuelle ou une audiodescription ?`),
+      CRIT('4.3', `Chaque média synchronisé pré-enregistré a-t-il, si nécessaire, des sous-titres synchronisés ?`),
+      CRIT('4.5', `Chaque média temporel pré-enregistré a-t-il, si nécessaire, une audiodescription synchronisée ?`)
+    ),
+    pg('Quand faut-il quoi ?',
+      UL([
+        `<strong>Podcast</strong> (audio seul) : une transcription.`,
+        `<strong>Vidéo avec paroles</strong> : des sous-titres, plus une transcription ou une audiodescription.`,
+        `<strong>Vidéo d’ambiance muette</strong> en fond de page : aucune alternative si elle n’apporte pas d’information, mais un bouton pause.`,
+        `<strong>Tutoriel qui montre sans dire</strong> (« cliquez ici, puis là ») : une audiodescription, ou une transcription qui décrit les actions.`
+      ]),
+      P(`Les critères 4.2, 4.4 et 4.6 vérifient que ces alternatives sont pertinentes, et 4.7 que chaque média est clairement identifiable.`),
+      PO(`Le plus simple : demander dès l’écriture du script que la voix décrive ce qui est montré. L’audiodescription devient alors inutile.`)
+    ),
+    pg('Des exemples connus',
+      REAL('Netflix', `De nombreux programmes proposent l’audiodescription et des sous-titres pour sourds et malentendants, à choisir dans le menu audio et sous-titres.`),
+      REAL('YouTube', `Les sous-titres automatiques aident, mais ils se trompent sur les noms propres et le vocabulaire métier. Pour un contenu important, il faut les relire et les corriger.`),
+      REAL('Apple Podcasts', `Depuis 2024, l’app génère des transcriptions des épisodes, consultables pendant l’écoute.`)
+    ),
+    pg('Garder le contrôle de la lecture',
+      CRIT('4.10', `Chaque son déclenché automatiquement est-il contrôlable par l’utilisateur ?`),
+      CRIT('4.11', `La consultation de chaque média temporel est-elle contrôlable par le clavier et tout dispositif de pointage ?`),
+      CRIT('4.13', `Chaque média est-il compatible avec les technologies d’assistance ?`),
+      DONT(`Une vidéo qui démarre avec le son à l’ouverture de la page : elle couvre la voix du lecteur d’écran. Un lecteur dont les boutons ne prennent pas le focus.`),
+      REAL('YouTube', `Le lecteur se pilote au clavier : K pour lecture et pause, F pour le plein écran, C pour afficher les sous-titres.`)
+    ),
+    pg('Les médias non temporels',
+      CRIT('4.8', `Chaque média non temporel a-t-il, si nécessaire, une alternative ?`),
+      CRIT('4.12', `La consultation de chaque média non temporel est-elle contrôlable par le clavier et tout dispositif de pointage ?`),
+      P(`Un média non temporel n’a pas de déroulé dans le temps : une visite virtuelle à 360°, une animation interactive, un configurateur 3D. Il lui faut une alternative qui donne la même information, et des commandes utilisables sans souris.`),
+      P(`Le critère 4.9 vérifie que cette alternative est pertinente.`)
+    ),
+    pg('Les cadres (iframes)',
+      P(`Un cadre affiche une page dans la page : vidéo intégrée, carte, module de paiement, widget de discussion.`),
+      CRIT('2.1', `Chaque cadre a-t-il un titre de cadre ?`),
+      CRIT('2.2', `Pour chaque cadre ayant un titre, ce titre est-il pertinent ?`),
+      REAL('Le code d’intégration YouTube', `Il contient par défaut title="YouTube video player". Il y a bien un titre, mais il n’est pas pertinent : avec trois vidéos sur la page, impossible de les distinguer. Remplace-le par le titre de la vidéo.`),
+      PO(`Pour chaque service tiers intégré (paiement, carte, chat, avis clients), demande la déclaration d’accessibilité du fournisseur. Son défaut devient le tien.`)
+    )
+  ],
+  quiz: [
+    Q(`De quoi un podcast a-t-il besoin ?`,
+      [`De sous-titres`, `D’une transcription textuelle`, `D’une audiodescription`, `De rien`], 1,
+      `Sans image, il n’y a rien à synchroniser : une transcription donne accès à tout le contenu.`),
+    Q(`À qui sert principalement l’audiodescription ?`,
+      [`Aux personnes sourdes`, `Aux personnes aveugles ou malvoyantes`, `Aux personnes dyslexiques`, `Aux personnes daltoniennes`], 1,
+      `Elle décrit ce qui se passe à l’écran pour qui ne peut pas le voir.`),
+    Q(`Une vidéo démarre avec le son dès l’ouverture de la page. Quel est le problème principal ?`,
+      [`Elle consomme des données`, `Elle couvre la voix du lecteur d’écran et prive l’utilisateur du contrôle`, `Elle ralentit la page`, `Aucun problème`], 1,
+      `Un son automatique doit pouvoir être arrêté. Le plus simple est de ne pas lancer de son sans action de l’utilisateur.`),
+    Q(`Le code d’intégration YouTube contient title="YouTube video player". C’est…`,
+      [`parfait`, `présent mais pas pertinent`, `interdit`, `inutile, un cadre n’a pas besoin de titre`], 1,
+      `Le titre doit permettre d’identifier le contenu du cadre, par exemple le titre de la vidéo.`),
+    Q(`Pour qui une transcription textuelle est-elle indispensable ?`,
+      [`Les personnes sourdes-aveugles`, `Les personnes daltoniennes`, `Les personnes qui naviguent à la souris`, `Personne, les sous-titres suffisent toujours`], 0,
+      `Les sous-titres défilent avec la vidéo. Une transcription peut être lue à son rythme, y compris sur une plage braille.`)
+  ]
+});
+
+chapter({
+  id: 'tableaux',
+  title: 'Tableaux',
+  theme: 'Thématique RGAA 5 · 8 critères',
+  short: 'Des tableaux de données que l’on peut lire cellule par cellule, et pas de tableaux pour la mise en page.',
+  pages: [
+    pg('Données ou mise en page ?',
+      P(`Un <strong>tableau de données</strong> croise des lignes et des colonnes : grille tarifaire, guide des tailles, comparatif d’offres, relevé de compte. Un lecteur d’écran le lit cellule par cellule en annonçant les en-têtes.`),
+      P(`Un <strong>tableau de mise en forme</strong> sert seulement à aligner des éléments. Courant dans les années 2000, il est à éviter aujourd’hui : la mise en page se fait en CSS.`),
+      CRIT('5.3', `Pour chaque tableau de mise en forme, le contenu linéarisé reste-t-il compréhensible ?`),
+      CRIT('5.8', `Chaque tableau de mise en forme ne doit pas utiliser d’éléments propres aux tableaux de données.`)
+    ),
+    pg('Les en-têtes, la clé de tout',
+      CRIT('5.6', `Pour chaque tableau de données, chaque en-tête de colonne et de ligne est-il correctement déclaré ?`),
+      CRIT('5.7', `Pour chaque tableau de données, la technique appropriée est-elle utilisée pour associer chaque cellule à ses en-têtes ?`),
+      DONT(`Sans en-têtes, un guide des tailles se lit : « 38, 86, 70, 94 ».`),
+      DO(`Avec en-têtes : « Taille 38, tour de poitrine 86 cm, tour de taille 70 cm, tour de hanches 94 cm ».`),
+      P(`Un tableau dessiné avec des blocs de mise en page, ou une capture d’écran de tableur, ne peut pas être lu ainsi.`)
+    ),
+    pg('Titre et résumé',
+      CRIT('5.4', `Pour chaque tableau de données ayant un titre, ce titre est-il correctement associé au tableau ?`),
+      CRIT('5.5', `Pour chaque tableau de données ayant un titre, ce titre est-il pertinent ?`),
+      CRIT('5.1', `Chaque tableau de données complexe a-t-il un résumé ?`),
+      CRIT('5.2', `Pour chaque tableau complexe ayant un résumé, ce résumé est-il pertinent ?`),
+      P(`Un tableau complexe (en-têtes sur plusieurs niveaux, cellules fusionnées) a besoin d’un résumé qui explique comment le lire. Le plus simple reste souvent de le découper en deux tableaux simples.`)
+    ),
+    pg('Tableaux et mobile',
+      P(`Les grands tableaux posent problème sur petit écran. Bonnes solutions : défilement horizontal du tableau seul, colonnes prioritaires, ou passage en cartes, à condition que chaque valeur garde son intitulé.`),
+      REAL('Pages tarifaires des logiciels en ligne', `Elles affichent souvent un grand comparatif de fonctionnalités avec des coches. Une coche sans texte associé (« Inclus », « Non inclus ») peut n’être restituée par rien.`),
+      PO(`Dans l’US d’un tableau : « chaque colonne et chaque ligne ont un en-tête, le tableau a un titre, chaque coche est restituée par “Inclus” ou “Non inclus” ».`)
+    )
+  ],
+  quiz: [
+    Q(`Qu’est-ce qui rend un tableau de données compréhensible au lecteur d’écran ?`,
+      [`Des bordures épaisses`, `Des en-têtes de colonnes et de lignes correctement déclarés`, `Des lignes de couleurs alternées`, `Une police plus grande`], 1,
+      `Les en-têtes permettent d’annoncer à quoi correspond chaque valeur.`),
+    Q(`Pour aligner un formulaire sur deux colonnes, on utilise…`,
+      [`un tableau de données`, `la mise en page CSS`, `une image`, `un cadre`], 1,
+      `La mise en forme passe par le CSS. Les tableaux sont réservés aux données.`),
+    Q(`Un tableau avec plusieurs niveaux d’en-têtes et des cellules fusionnées doit avoir…`,
+      [`une couleur par niveau`, `un résumé qui explique sa structure`, `une image de remplacement`, `rien de plus`], 1,
+      `C’est un tableau complexe : le résumé aide à comprendre comment le parcourir.`),
+    Q(`Dans un comparatif d’offres, une coche verte sans texte associé…`,
+      [`est parfaitement accessible`, `risque de n’être restituée par rien`, `est interdite par le RGAA`, `doit être remplacée par une coche rouge`], 1,
+      `Une icône seule a besoin d’une alternative : « Inclus » ou « Non inclus ».`)
+  ]
+});
+
+chapter({
+  id: 'liens',
+  title: 'Liens',
+  theme: 'Thématique RGAA 6 · 2 critères',
+  short: 'Des liens qui disent où ils mènent, et jamais de lien vide.',
+  pages: [
+    pg('Un lien dit où il mène',
+      CRIT('6.1', `Chaque lien est-il explicite ?`),
+      P(`Les utilisateurs de lecteur d’écran affichent souvent la liste de tous les liens d’une page, sortis de leur contexte.`),
+      DONT(`Une liste qui donne : « En savoir plus, En savoir plus, En savoir plus, Cliquez ici ».`),
+      DO(`« Découvrir l’offre Famille », « Télécharger la facture de mars (PDF, 120 Ko) ».`),
+      P(`Le RGAA accepte qu’un lien soit explicite grâce à son contexte : sa phrase, son paragraphe, le titre qui le précède. Un intitulé clair à lui seul reste toujours plus sûr.`)
+    ),
+    pg('Chaque lien a un intitulé',
+      CRIT('6.2', `Dans chaque page web, chaque lien a-t-il un intitulé ?`),
+      STAT('46 %', `des pages d’accueil contiennent au moins un lien vide (WebAIM Million 2026).`),
+      P(`Cas typique : une icône de réseau social ou un logo cliquable sans alternative. Le lecteur d’écran annonce alors « lien » suivi de l’adresse, ou rien du tout.`)
+    ),
+    pg('Lien ou bouton ?',
+      P(`Ce n’est pas un détail de développeur : les deux sont annoncés et utilisés différemment.`),
+      UL([
+        `<strong>Lien</strong> : il emmène ailleurs, vers une autre page, une ancre ou un fichier.`,
+        `<strong>Bouton</strong> : il déclenche une action sur place, comme ajouter au panier, ouvrir un menu ou envoyer un formulaire.`
+      ]),
+      DONT(`Un « bouton » Ajouter au panier codé comme un lien vers « # ».`),
+      DO(`Un vrai bouton pour chaque action, un vrai lien pour chaque navigation, quel que soit leur style visuel.`)
+    ),
+    pg('Bonnes pratiques et exemples',
+      UL([
+        `Préciser le format et le poids d’un fichier : « Guide (PDF, 2 Mo) ».`,
+        `Signaler dans l’intitulé l’ouverture d’une nouvelle fenêtre.`,
+        `Garder la même formulation pour une même destination.`
+      ]),
+      REAL('GOV.UK', `Le guide de rédaction du gouvernement britannique proscrit « cliquez ici » et demande des liens qui décrivent leur destination.`),
+      REAL('Les lecteurs d’écran', `NVDA (Insert + F7) et le rotor de VoiceOver affichent la liste des liens d’une page. Essaie sur ton produit : c’est le test le plus parlant pour une équipe.`),
+      PO(`En revue de maquette, lis tous les liens à voix haute sans le reste de la page. Si deux liens ont le même texte et mènent à des endroits différents, il y a un problème.`)
+    )
+  ],
+  quiz: [
+    Q(`Pourquoi « En savoir plus » répété partout pose-t-il problème ?`,
+      [`C’est trop long`, `Hors contexte, on ne sait pas où mène chaque lien`, `Le RGAA interdit ce texte`, `Ce n’est pas un problème`], 1,
+      `Dans la liste des liens d’un lecteur d’écran, ils deviennent tous identiques.`),
+    Q(`Un logo cliquable sans alternative textuelle produit…`,
+      [`un lien vide`, `un titre de page`, `un lien parfaitement explicite`, `une erreur d’affichage`], 0,
+      `Le lien n’a aucun intitulé : son alternative doit dire où il mène, par exemple « Nom du site, accueil ».`),
+    Q(`« Ajouter au panier » doit être…`,
+      [`un lien`, `un bouton`, `une image`, `un simple texte`], 1,
+      `C’est une action sur place, donc un bouton.`),
+    Q(`Quelle est la meilleure formulation pour un lien vers un PDF ?`,
+      [`« Cliquez ici »`, `« Télécharger le guide (PDF, 2 Mo) »`, `Une icône PDF seule`, `« Lien »`], 1,
+      `Le lien annonce sa destination, son format et son poids.`)
+  ]
+});
+
+chapter({
+  id: 'scripts',
+  title: 'Scripts et composants interactifs',
+  theme: 'Thématique RGAA 7 · 5 critères',
+  short: 'Menus, modales, onglets, carrousels, chatbots : tout ce qui réagit sans recharger la page.',
+  pages: [
+    pg('Quand l’interface bouge',
+      P(`Menus déroulants, fenêtres modales, onglets, accordéons, carrousels, autocomplétion, chatbot : tout ce qui réagit sans recharger la page passe par JavaScript. C’est là que se cachent les blocages les plus graves.`),
+      CRIT('7.1', `Chaque script est-il, si nécessaire, compatible avec les technologies d’assistance ?`),
+      CRIT('7.2', `Pour chaque script ayant une alternative, cette alternative est-elle pertinente ?`)
+    ),
+    pg('Tout doit marcher au clavier',
+      CRIT('7.3', `Chaque script est-il contrôlable par le clavier et par tout dispositif de pointage ?`),
+      P(`Tab avance, Maj + Tab recule, Entrée et Espace activent, Échap ferme, les flèches se déplacent dans un menu ou une liste d’onglets.`),
+      DONT(`Une liste déroulante personnalisée qui ne s’ouvre qu’à la souris. Une modale qui ne se ferme pas avec Échap et laisse le focus derrière elle, sur la page grisée.`),
+      DO(`À l’ouverture d’une modale, le focus entre dedans et y reste. À la fermeture, il revient sur le bouton qui l’a ouverte.`)
+    ),
+    pg('Annoncer ce qui change',
+      CRIT('7.5', `Les messages de statut sont-ils correctement restitués par les technologies d’assistance ?`),
+      P(`Un message qui apparaît sans que le focus bouge est invisible pour un utilisateur aveugle, sauf s’il est codé pour être annoncé.`),
+      UL([
+        `« Produit ajouté au panier »`,
+        `« 24 résultats » après l’application d’un filtre`,
+        `« Modifications enregistrées »`,
+        `« Pierre est en train d’écrire… » dans une messagerie`
+      ]),
+      PO(`Pour chaque message éphémère (notification, toast, compteur), ajoute un critère d’acceptation : « le message est annoncé par le lecteur d’écran sans déplacer le focus ».`)
+    ),
+    pg('Pas de surprise',
+      CRIT('7.4', `Pour chaque script qui initie un changement de contexte, l’utilisateur est-il averti ou en a-t-il le contrôle ?`),
+      P(`Un changement de contexte, c’est une nouvelle page, une nouvelle fenêtre, ou un déplacement du focus que l’on n’a pas demandé.`),
+      DONT(`Un sélecteur de pays qui recharge la page dès qu’on parcourt les options au clavier. Un formulaire qui s’envoie tout seul une fois le dernier champ rempli.`),
+      DO(`Un bouton « Appliquer » ou « Valider », ou un texte qui prévient de ce qui va se passer.`)
+    ),
+    pg('ARIA, à manier avec soin',
+      P(`ARIA est un ensemble d’attributs qui expliquent aux aides techniques ce qu’est un composant : « onglet », « déplié », « 3 sur 5 ». Le W3C le dit lui-même : pas d’ARIA vaut mieux que du mauvais ARIA.`),
+      P(`La règle d’or : utiliser d’abord les éléments HTML natifs (bouton, case à cocher, liste déroulante), accessibles d’office.`),
+      REAL('W3C ARIA Authoring Practices Guide', `Ce guide décrit, composant par composant (modale, onglets, liste de suggestions…), le comportement clavier attendu. Une base idéale pour écrire tes critères d’acceptation.`),
+      REAL('Design systems publics', `Le système de design de l’État français (DSFR) et le GOV.UK Design System publient des composants testés avec les aides techniques.`)
+    ),
+    pg('Cas pratique : un chatbot',
+      P(`Un assistant conversationnel cumule les difficultés. Voici ce qu’il faut exiger.`),
+      UL([
+        `Le bouton d’ouverture a un intitulé (« Ouvrir l’assistant »), pas seulement une icône.`,
+        `Chaque nouveau message est annoncé automatiquement, sans voler le focus du champ de saisie.`,
+        `L’historique est structuré : qui parle, dans quel ordre.`,
+        `Les réponses rapides proposées sont de vrais boutons.`,
+        `Aucune proposition ne disparaît au bout de quelques secondes.`,
+        `Échap ferme la fenêtre et rend le focus au bouton d’ouverture.`
+      ])
+    )
+  ],
+  quiz: [
+    Q(`Quelle touche doit fermer une fenêtre modale ?`,
+      [`Entrée`, `Échap`, `Tab`, `F5`], 1,
+      `Échap est la convention attendue pour fermer une modale, un menu ou une infobulle.`),
+    Q(`Où doit revenir le focus quand on ferme une modale ?`,
+      [`En haut de la page`, `Sur le bouton qui l’a ouverte`, `Dans le pied de page`, `Nulle part en particulier`], 1,
+      `L’utilisateur reprend là où il était, sans devoir retraverser toute la page.`),
+    Q(`« Produit ajouté au panier » s’affiche en haut de l’écran. Pour un utilisateur aveugle…`,
+      [`le message est forcément lu`, `il faut le coder pour qu’il soit annoncé`, `il faut déplacer le focus sur le panier`, `ce message ne le concerne pas`], 1,
+      `C’est un message de statut : il doit être annoncé sans déplacer le focus.`),
+    Q(`Que dit le W3C à propos d’ARIA ?`,
+      [`ARIA est obligatoire sur chaque élément`, `Pas d’ARIA vaut mieux que du mauvais ARIA`, `ARIA remplace le HTML`, `ARIA ne sert qu’au design`], 1,
+      `Un ARIA mal utilisé ment aux aides techniques. Les éléments HTML natifs passent avant.`),
+    Q(`Un sélecteur de langue recharge la page dès qu’on parcourt ses options au clavier. C’est…`,
+      [`une bonne pratique d’ergonomie`, `un changement de contexte non maîtrisé par l’utilisateur`, `un problème de contraste`, `un problème de titre de page`], 1,
+      `Le changement doit être déclenché volontairement, par exemple avec un bouton « Appliquer ».`)
+  ]
+});
+
+chapter({
+  id: 'obligatoires',
+  title: 'Éléments obligatoires',
+  theme: 'Thématique RGAA 8 · 10 critères',
+  short: 'Langue, titre de page, code valide : les fondations invisibles de chaque page.',
+  pages: [
+    pg('Les fondations invisibles',
+      P(`Ces critères ne se voient pas à l’écran, mais sans eux rien ne fonctionne bien.`),
+      CRIT('8.1', `Chaque page web est-elle définie par un type de document ?`),
+      CRIT('8.2', `Pour chaque page web, le code source généré est-il valide ?`),
+      P(`Un code invalide (balises mal fermées, identifiants en double) peut perturber la restitution par les aides techniques, et chaque navigateur le répare à sa façon.`)
+    ),
+    pg('La langue de la page',
+      CRIT('8.3', `Dans chaque page web, la langue par défaut est-elle présente ?`),
+      CRIT('8.4', `Pour chaque page web ayant une langue par défaut, le code de langue est-il pertinent ?`),
+      P(`Sans langue déclarée, un lecteur d’écran réglé en anglais lira ton texte français avec une prononciation anglaise incompréhensible. L’absence de langue fait d’ailleurs partie des six erreurs les plus fréquentes du WebAIM Million.`),
+      CODE(`<html lang="fr">`)
+    ),
+    pg('Les changements de langue',
+      CRIT('8.7', `Dans chaque page web, chaque changement de langue est-il indiqué dans le code source ?`),
+      CRIT('8.8', `Dans chaque page web, le code de langue de chaque changement de langue est-il valide et pertinent ?`),
+      P(`Une citation en anglais dans une page française doit être signalée, pour être lue avec la bonne voix.`),
+      P(`Les noms propres et les mots passés dans l’usage (« week-end », « marketing ») n’ont pas besoin de l’être.`)
+    ),
+    pg('Le titre de la page',
+      CRIT('8.5', `Chaque page web a-t-elle un titre de page ?`),
+      CRIT('8.6', `Pour chaque page web ayant un titre, ce titre est-il pertinent ?`),
+      P(`C’est le texte de l’onglet du navigateur, et la première chose qu’annonce un lecteur d’écran à l’ouverture d’une page.`),
+      DONT(`Toutes les pages titrées « Accueil – MaMarque ». Une application web dont le titre ne change jamais d’un écran à l’autre.`),
+      DO(`« Panier (3 articles) – MaMarque ». « Étape 2 sur 4 : livraison – Commande – MaMarque ». « Erreur dans le formulaire – Inscription ».`)
+    ),
+    pg('Des titres qui informent',
+      REAL('Google', `La page de résultats porte ta recherche dans son titre : « accessibilité numérique - Recherche Google ». Tu sais où tu es sans rien lire d’autre.`),
+      PO(`Dans une application d’une seule page (React, Vue, Angular…), le titre ne se met pas à jour tout seul. C’est un critère d’acceptation à écrire pour chaque écran, et pour chaque état important (erreur, confirmation).`)
+    ),
+    pg('Les balises à leur place',
+      CRIT('8.9', `Dans chaque page web, les balises ne doivent pas être utilisées uniquement à des fins de présentation.`),
+      CRIT('8.10', `Dans chaque page web, les changements du sens de lecture sont-ils signalés ?`),
+      DONT(`Un texte balisé comme titre seulement pour l’écrire en gros. Des sauts de ligne vides pour créer de l’espace.`),
+      DO(`Le sens dans le HTML, l’apparence dans le CSS.`),
+      P(`Le critère 8.10 concerne surtout les langues lues de droite à gauche, comme l’arabe ou l’hébreu.`)
+    )
+  ],
+  quiz: [
+    Q(`Que se passe-t-il si la langue de la page n’est pas déclarée ?`,
+      [`La page ne s’affiche pas`, `Le lecteur d’écran peut lire le texte avec la mauvaise prononciation`, `Le référencement est bloqué`, `Rien de particulier`], 1,
+      `Le lecteur d’écran choisit sa voix selon la langue déclarée.`),
+    Q(`Quel est le titre de page le plus pertinent pour l’étape de livraison d’une commande ?`,
+      [`« MaMarque »`, `« Accueil »`, `« Étape 2 sur 4 : livraison – Commande – MaMarque »`, `« Page »`], 2,
+      `Il dit où l’on est, à quelle étape, et sur quel site.`),
+    Q(`Le mot « week-end » dans un texte français doit-il être signalé comme anglais ?`,
+      [`Oui, toujours`, `Non, il est passé dans l’usage`, `Seulement s’il est en gras`, `Seulement en début de phrase`], 1,
+      `Les mots courants et les noms propres sont exemptés.`),
+    Q(`Dans une application web d’une seule page, le titre de l’onglet…`,
+      [`se met à jour automatiquement`, `doit être mis à jour par le code à chaque écran`, `n’a aucune importance`, `est géré par le navigateur`], 1,
+      `Sans mise à jour volontaire, tous les écrans portent le même titre.`)
+  ]
+});
+
+chapter({
+  id: 'structure',
+  title: 'Structuration de l’information',
+  theme: 'Thématique RGAA 9 · 4 critères',
+  short: 'Titres, zones, listes : le plan caché qui permet de se repérer sans voir la page.',
+  pages: [
+    pg('Les titres, plan de la page',
+      CRIT('9.1', `Dans chaque page web, l’information est-elle structurée par l’utilisation appropriée de titres ?`),
+      P(`Les titres (de h1 à h6) forment le plan de la page : un h1 qui dit de quoi parle la page, des h2 pour les grandes parties, des h3 à l’intérieur.`),
+      P(`Rappel : 71,6 % des utilisateurs de lecteur d’écran explorent une page par ses titres.`),
+      DONT(`Un texte en gras et en gros qui ressemble à un titre sans en être un. Un h4 choisi parce que sa taille plaît.`),
+      DO(`Le niveau de titre suit la logique du contenu. La taille se règle en CSS.`)
+    ),
+    pg('Les grandes zones de la page',
+      CRIT('9.2', `Dans chaque page web, la structure du document est-elle cohérente ?`),
+      P(`L’en-tête, la navigation principale, le contenu principal et le pied de page doivent être déclarés comme tels. Les lecteurs d’écran permettent de sauter directement d’une zone à l’autre.`),
+      CODE(`<header>…</header>
+<nav>…</nav>
+<main>…</main>
+<footer>…</footer>`)
+    ),
+    pg('Listes et citations',
+      CRIT('9.3', `Dans chaque page web, chaque liste est-elle correctement structurée ?`),
+      CRIT('9.4', `Dans chaque page web, chaque citation est-elle correctement indiquée ?`),
+      P(`Un menu, une liste d’avantages, des étapes : ce sont des listes. Le lecteur d’écran annonce « liste de 6 éléments », ce qui donne la taille avant d’y entrer.`),
+      REAL('Wikipédia', `Chaque article est découpé en titres hiérarchisés, et le sommaire est construit à partir d’eux. Au lecteur d’écran, on passe d’une section à l’autre en une touche.`)
+    ),
+    pg('Le test en trente secondes',
+      P(`L’extension HeadingsMap (Chrome, Firefox) affiche le plan de titres de n’importe quelle page. Si ce plan ne raconte pas la page, la structure est à revoir.`),
+      PO(`En revue de maquette, demande que les niveaux de titres soient annotés directement sur la maquette (H1, H2, H3). Le développeur n’a pas à les deviner.`)
+    )
+  ],
+  quiz: [
+    Q(`Comment choisir le niveau d’un titre ?`,
+      [`Selon la taille souhaitée`, `Selon la logique du contenu`, `Selon la couleur de la charte`, `Au hasard, cela n’a pas d’importance`], 1,
+      `Le niveau traduit la hiérarchie du contenu. L’apparence se règle à part, en CSS.`),
+    Q(`Un lecteur d’écran annonce « liste de 6 éléments ». Qu’est-ce que cela apporte ?`,
+      [`Rien de particulier`, `L’utilisateur connaît la taille de la liste avant d’y entrer`, `Cela améliore le contraste`, `Cela traduit la liste`], 1,
+      `Il peut décider de la parcourir ou de la sauter.`),
+    Q(`À quoi servent les zones header, nav, main et footer ?`,
+      [`Uniquement au référencement`, `À sauter directement d’une zone à l’autre avec une aide technique`, `À changer les couleurs`, `À rien pour l’utilisateur`], 1,
+      `Ces repères permettent d’atteindre le contenu principal ou la navigation en un geste.`),
+    Q(`Combien de titres de niveau 1 recommande-t-on par page ?`,
+      [`Aucun`, `Un seul, qui dit de quoi parle la page`, `Un par section`, `Autant que nécessaire`], 1,
+      `Ce n’est pas une exigence stricte du RGAA, mais c’est la pratique la plus claire pour les utilisateurs.`)
+  ]
+});
+
+chapter({
+  id: 'presentation',
+  title: 'Présentation de l’information',
+  theme: 'Thématique RGAA 10 · 14 critères',
+  short: 'Zoom, espacement, focus visible, contenus au survol : la page doit s’adapter à chacun.',
+  pages: [
+    pg('Le fond et la forme séparés',
+      CRIT('10.1', `Dans le site web, des feuilles de styles sont-elles utilisées pour contrôler la présentation de l’information ?`),
+      CRIT('10.2', `Le contenu visible porteur d’information reste-t-il présent lorsque les feuilles de styles sont désactivées ?`),
+      CRIT('10.3', `L’information reste-t-elle compréhensible lorsque les feuilles de styles sont désactivées ?`),
+      P(`Une information qui n’existe que dans le design (un prix placé en image de fond, un ordre visuel qui contredit l’ordre du code) disparaît pour certains utilisateurs.`)
+    ),
+    pg('Zoomer sans rien casser',
+      CRIT('10.4', `Le texte reste-t-il lisible lorsque la taille des caractères est augmentée jusqu’à 200 % au moins ?`),
+      CRIT('10.11', `Les contenus s’affichent-ils sans perte ni défilement horizontal sur une largeur de 320 px (soit un zoom à 400 %) ?`),
+      P(`Une personne malvoyante zoome à 200, 300, 400 %. Le site doit se réorganiser comme sur mobile, sans texte coupé et sans défilement dans les deux sens.`),
+      DONT(`Un en-tête fixe qui occupe la moitié de l’écran une fois zoomé. Un bouton qui sort de l’écran.`),
+      REAL('iOS et Android', `Les réglages de taille du texte, comme la Taille dynamique sur iPhone, agrandissent le texte dans toutes les apps compatibles. Une app qui les ignore, ou dont les textes se coupent en « … », laisse ces utilisateurs de côté.`)
+    ),
+    pg('Espacement et lisibilité',
+      CRIT('10.12', `Les propriétés d’espacement du texte peuvent-elles être redéfinies par l’utilisateur sans perte de contenu ou de fonctionnalité ?`),
+      P(`Des personnes dyslexiques ou malvoyantes appliquent leurs propres réglages : interlignage plus grand, plus d’espace entre les paragraphes, les lettres et les mots. Le texte ne doit alors ni se chevaucher ni être coupé.`),
+      CRIT('10.5', `Les déclarations CSS de couleurs de fond et de police sont-elles correctement utilisées ?`),
+      P(`Ce dernier critère vérifie qu’une couleur de texte est toujours définie avec sa couleur de fond : sinon, un réglage de l’utilisateur peut produire du blanc sur blanc.`),
+      PO(`Évite les blocs de texte à hauteur fixe : c’est une cause fréquente de texte coupé au zoom et à l’espacement.`)
+    ),
+    pg('Voir où l’on est',
+      CRIT('10.7', `Pour chaque élément recevant le focus, la prise de focus est-elle visible ?`),
+      CRIT('10.6', `Chaque lien dont la nature n’est pas évidente est-il visible par rapport au texte environnant ?`),
+      DONT(`Supprimer le contour de focus « parce qu’il est moche ». Un lien dans un paragraphe distingué seulement par une couleur proche du texte.`),
+      DO(`Un indicateur de focus net et contrasté, dessiné par le design. Des liens soulignés dans le texte.`),
+      REAL('GOV.UK', `Le focus y est signalé par un fond jaune vif et un soulignement épais. Impossible de le perdre, et c’est devenu une signature visuelle du site.`)
+    ),
+    pg('Forme, taille, position',
+      CRIT('10.9', `Dans chaque page web, l’information ne doit pas être donnée uniquement par la forme, la taille ou la position.`),
+      CRIT('10.10', `Cette règle est-elle implémentée de façon pertinente ?`),
+      DONT(`« Cliquez sur le bouton rond à droite. » « Les offres en grand sont nos préférées. »`),
+      DO(`« Cliquez sur Continuer. » Un badge en texte « Recommandé ».`)
+    ),
+    pg('Contenus au survol et contenus cachés',
+      CRIT('10.13', `Les contenus additionnels apparaissant au survol ou à la prise de focus sont-ils contrôlables par l’utilisateur ?`),
+      CRIT('10.14', `Les contenus additionnels apparaissant via les styles CSS uniquement peuvent-ils être rendus visibles au clavier et par tout dispositif de pointage ?`),
+      P(`Une infobulle ou un méga-menu au survol doit pouvoir se fermer avec Échap, rester affiché quand on déplace la souris dessus, et ne pas disparaître tout seul.`),
+      CRIT('10.8', `Les contenus cachés ont-ils vocation à être ignorés par les technologies d’assistance ?`),
+      P(`À l’inverse, un menu fermé ou un onglet inactif ne doit pas être lu par le lecteur d’écran comme s’il était affiché.`)
+    )
+  ],
+  quiz: [
+    Q(`Jusqu’à quel agrandissement du texte la page doit-elle rester lisible ?`,
+      [`120 %`, `150 %`, `200 %`, `1 000 %`], 2,
+      `200 % au moins pour la taille du texte, et l’affichage doit tenir sur une largeur de 320 px.`),
+    Q(`Sur quelle largeur la page doit-elle s’afficher sans défilement horizontal ?`,
+      [`1 024 px`, `768 px`, `320 px`, `100 px`], 2,
+      `320 px correspond à un zoom à 400 % sur un écran de 1 280 px de large.`),
+    Q(`Le designer veut supprimer le contour de focus. Ta réponse ?`,
+      [`D’accord, c’est une question de goût`, `Non : le focus doit rester visible, mais on peut le redessiner`, `D’accord, si le site a un mode sombre`, `D’accord, les utilisateurs du clavier sont rares`], 1,
+      `Sans focus visible, la navigation au clavier devient impossible. Le design peut en revanche le styliser.`),
+    Q(`« Cliquez sur le bouton vert à droite » pose problème parce que…`,
+      [`la consigne est trop courte`, `l’information passe par la couleur et la position`, `le vert est interdit`, `il manque un point d’exclamation`], 1,
+      `Une personne aveugle ou daltonienne, ou qui zoome, ne peut pas suivre la consigne. Il faut nommer le bouton.`),
+    Q(`Une infobulle qui apparaît au survol doit pouvoir…`,
+      [`disparaître seule au bout d’une seconde`, `se fermer avec Échap et rester visible quand la souris passe dessus`, `s’ouvrir uniquement à la souris`, `couvrir tout l’écran`], 1,
+      `L’utilisateur garde le contrôle : il la ferme quand il veut, et peut la lire à son rythme.`)
+  ]
+});
+
+chapter({
+  id: 'formulaires',
+  title: 'Formulaires',
+  theme: 'Thématique RGAA 11 · 13 critères',
+  short: 'Étiquettes, regroupements, messages d’erreur, remplissage automatique : là où se jouent inscriptions et achats.',
+  pages: [
+    pg('Une étiquette pour chaque champ',
+      CRIT('11.1', `Chaque champ de formulaire a-t-il une étiquette ?`),
+      CRIT('11.2', `Chaque étiquette associée à un champ est-elle pertinente ?`),
+      CRIT('11.4', `Chaque étiquette et son champ sont-ils accolés ?`),
+      STAT('51 %', `des pages d’accueil ont au moins un champ de formulaire sans étiquette (WebAIM Million 2026).`)
+    ),
+    pg('Le piège du placeholder',
+      DONT(`Un texte gris « E-mail » dans le champ, qui disparaît dès qu’on tape : plus d’étiquette, un contraste souvent trop faible, et la personne oublie ce qu’on lui demandait.`),
+      DO(`Une étiquette visible au-dessus du champ, reliée au champ dans le code. Le placeholder sert seulement d’exemple : « ex. : marie@exemple.fr ».`),
+      CRIT('11.3', `Une étiquette répétée pour une même fonction est-elle cohérente dans tout le site ?`),
+      P(`Même champ, même étiquette partout : « Code postal » ne devient pas « CP » sur la page suivante.`)
+    ),
+    pg('Regrouper ce qui va ensemble',
+      CRIT('11.5', `Les champs de même nature sont-ils regroupés, si nécessaire ?`),
+      CRIT('11.6', `Chaque regroupement de champs a-t-il une légende ?`),
+      CRIT('11.7', `Chaque légende de regroupement est-elle pertinente ?`),
+      CRIT('11.8', `Les options de même nature d’une liste de choix sont-elles regroupées de manière pertinente ?`),
+      P(`Des boutons radio « Oui » et « Non » sans question associée sont incompréhensibles hors contexte. Bien regroupés, ils sont annoncés : « Souhaitez-vous recevoir la newsletter ? Oui, bouton radio, 1 sur 2. »`)
+    ),
+    pg('Des boutons qui disent ce qu’ils font',
+      CRIT('11.9', `Dans chaque formulaire, l’intitulé de chaque bouton est-il pertinent ?`),
+      DONT(`« OK », « Valider », « > », ou une icône seule.`),
+      DO(`« Créer mon compte », « Payer 49,90 € », « Rechercher ».`),
+      P(`Un bouton désactivé tant que le formulaire n’est pas complet est un piège : on ne sait pas ce qui manque. Mieux vaut un bouton actif et des messages d’erreur clairs.`)
+    ),
+    pg('Les erreurs : quoi et comment corriger',
+      CRIT('11.10', `Dans chaque formulaire, le contrôle de saisie est-il utilisé de manière pertinente ?`),
+      CRIT('11.11', `Le contrôle de saisie est-il accompagné, si nécessaire, de suggestions pour corriger les erreurs ?`),
+      UL([
+        `Indiquer les champs obligatoires avant la saisie, en texte.`,
+        `Indiquer le format attendu : « JJ/MM/AAAA ».`,
+        `Afficher l’erreur près du champ, en texte, avec la correction : « Le code postal doit contenir 5 chiffres ».`,
+        `Résumer les erreurs en haut du formulaire, et faire annoncer ce résumé.`
+      ])
+    ),
+    pg('Un modèle à copier',
+      REAL('GOV.UK Design System', `Son composant « Error summary » liste toutes les erreurs en haut de la page. Chaque erreur est un lien qui place le curseur dans le champ concerné. Le modèle a été repris par de nombreux services publics.`),
+      GH(`Étant donné que je valide le formulaire avec un e-mail invalide
+Alors le message « Saisis une adresse e-mail valide, par exemple marie@exemple.fr » s’affiche sous le champ
+Et ce message est annoncé par le lecteur d’écran
+Et le focus est placé sur le premier champ en erreur`)
+    ),
+    pg('Sécuriser les actions importantes',
+      CRIT('11.12', `Pour un formulaire aux conséquences financières, juridiques ou qui modifie des données, l’utilisateur peut-il annuler, vérifier ou confirmer ?`),
+      REAL('Gmail', `Le lien « Annuler » qui apparaît quelques secondes après l’envoi d’un message rend l’action réversible.`),
+      REAL('Les sites marchands', `La page récapitulative avant paiement (articles, adresse, total) permet de vérifier et de corriger avant de confirmer.`)
+    ),
+    pg('Le remplissage automatique',
+      CRIT('11.13', `La finalité d’un champ peut-elle être déduite pour faciliter le remplissage automatique ?`),
+      P(`Quand le code précise « ceci est un prénom, un e-mail, une adresse », le navigateur propose de remplir le champ. Un vrai soulagement pour qui a du mal à taper ou à mémoriser.`),
+      CODE(`<label for="email">Adresse e-mail</label>
+<input id="email" type="email" autocomplete="email">`),
+      PO(`Ne bloque jamais le copier-coller dans un champ de mot de passe : cela empêche l’usage des gestionnaires de mots de passe. Les WCAG 2.2, et donc le RGAA 5, renforcent ce point avec l’authentification accessible.`)
+    )
+  ],
+  quiz: [
+    Q(`Un texte d’exemple « Votre e-mail » dans le champ peut-il remplacer l’étiquette ?`,
+      [`Oui, c’est plus élégant`, `Non : il disparaît à la saisie et il est souvent peu contrasté`, `Oui, s’il est en gras`, `Oui, sur mobile seulement`], 1,
+      `L’étiquette doit rester visible et être reliée au champ.`),
+    Q(`Quel est le meilleur intitulé pour le bouton final d’un tunnel d’achat ?`,
+      [`« OK »`, `« > »`, `« Payer 49,90 € »`, `« Valider »`], 2,
+      `Il dit exactement ce qui va se passer, montant compris.`),
+    Q(`Quel est le meilleur message d’erreur ?`,
+      [`« Erreur »`, `« Champ invalide »`, `« Le code postal doit contenir 5 chiffres »`, `Une bordure rouge autour du champ`], 2,
+      `Il dit ce qui ne va pas et comment corriger, en texte.`),
+    Q(`Le lien « Annuler » de Gmail après l’envoi illustre quelle exigence ?`,
+      [`Le contraste des liens`, `Une action importante rendue réversible`, `Le remplissage automatique`, `L’étiquetage des champs`], 1,
+      `Le critère 11.12 demande qu’une action importante soit réversible, vérifiable ou confirmée.`),
+    Q(`À quoi sert l’attribut autocomplete="email" ?`,
+      [`À vérifier le format de l’adresse`, `À permettre au navigateur de remplir le champ automatiquement`, `À masquer l’adresse`, `À traduire le champ`], 1,
+      `Il indique la finalité du champ, ce qui active le remplissage automatique.`),
+    Q(`Des boutons radio « Oui » et « Non » doivent être…`,
+      [`placés dans un tableau`, `regroupés avec une légende qui pose la question`, `remplacés par des cases à cocher`, `colorés différemment`], 1,
+      `La légende donne le contexte : sans elle, « Oui » ne veut rien dire.`)
+  ]
+});
+
+chapter({
+  id: 'navigation',
+  title: 'Navigation',
+  theme: 'Thématique RGAA 12 · 11 critères',
+  short: 'Se repérer, aller à l’essentiel, et ne jamais rester bloqué au clavier.',
+  pages: [
+    pg('Deux chemins au moins',
+      CRIT('12.1', `Chaque ensemble de pages dispose-t-il de deux systèmes de navigation différents, au moins ?`),
+      CRIT('12.2', `Le menu et les barres de navigation sont-ils toujours à la même place ?`),
+      P(`Menu et moteur de recherche, ou menu et plan du site : chacun trouve son chemin selon ses capacités. Et ce qui reste au même endroit d’une page à l’autre n’a pas à être réappris.`),
+      P(`Les critères 12.3 à 12.5 vérifient le plan du site (pertinent, atteignable de la même façon partout) et que le moteur de recherche est atteignable de manière identique sur toutes les pages.`)
+    ),
+    pg('Les liens d’évitement',
+      CRIT('12.6', `Les zones répétées (en-tête, navigation, contenu principal, pied de page, recherche) peuvent-elles être atteintes ou évitées ?`),
+      CRIT('12.7', `Dans chaque page, un lien d’évitement ou d’accès rapide au contenu principal est-il présent ?`),
+      P(`Sans lien d’évitement, une personne au clavier traverse les dizaines de liens du menu sur chaque page avant d’atteindre le contenu.`),
+      REAL('GOV.UK et les sites de l’État', `Appuie sur Tab en arrivant sur gov.uk : le premier élément est « Skip to main content ». Les sites qui utilisent le DSFR proposent des liens d’accès rapide au contenu, au menu, à la recherche et au pied de page.`)
+    ),
+    pg('Un ordre logique, sans piège',
+      CRIT('12.8', `Dans chaque page web, l’ordre de tabulation est-il cohérent ?`),
+      CRIT('12.9', `Dans chaque page web, la navigation ne doit pas contenir de piège au clavier.`),
+      DONT(`Un focus qui saute du haut de la page au pied de page, puis revient au milieu. Une vidéo intégrée d’où le clavier ne peut plus sortir.`),
+      DO(`Le focus suit l’ordre de lecture. On entre dans chaque composant et on en sort au clavier.`)
+    ),
+    pg('Raccourcis et contenus au survol',
+      CRIT('12.10', `Les raccourcis clavier n’utilisant qu’une seule touche sont-ils contrôlables par l’utilisateur ?`),
+      CRIT('12.11', `Les contenus qui apparaissent au survol, au focus ou à l’activation sont-ils atteignables au clavier ?`),
+      P(`Un raccourci d’une seule touche (« S » pour rechercher) peut se déclencher par erreur avec la commande vocale ou une frappe accidentelle. Il doit pouvoir être désactivé ou modifié.`),
+      REAL('Gmail', `Les raccourcis à une touche (j, k, e…) ne fonctionnent qu’une fois activés dans les paramètres.`)
+    ),
+    pg('Le test du clavier',
+      P(`Le test le plus rentable qui soit : débranche ta souris et fais le parcours principal de ton produit.`),
+      UL([
+        `Vois-tu toujours où se trouve le focus ?`,
+        `Peux-tu tout atteindre et tout activer ?`,
+        `L’ordre de passage est-il logique ?`,
+        `Peux-tu fermer menus et fenêtres avec Échap ?`,
+        `Restes-tu bloqué quelque part ?`
+      ]),
+      PO(`Fais ce test toi-même à chaque recette d’une fonctionnalité visible. Dix minutes, aucun outil, et beaucoup de blocages graves sont repérés.`)
+    )
+  ],
+  quiz: [
+    Q(`À quoi sert un lien d’évitement ?`,
+      [`À fermer la page`, `À aller directement au contenu principal sans traverser le menu`, `À éviter les publicités`, `À revenir à l’accueil`], 1,
+      `Il fait gagner des dizaines de tabulations sur chaque page.`),
+    Q(`Lequel de ces exemples offre deux systèmes de navigation différents ?`,
+      [`Deux menus identiques en haut et en bas`, `Un menu et un moteur de recherche`, `Un menu et un logo`, `Un seul menu très complet`], 1,
+      `Deux moyens différents de trouver un contenu, adaptés à des usages différents.`),
+    Q(`Qu’est-ce qu’un piège au clavier ?`,
+      [`Un raccourci secret`, `Un composant d’où l’on ne peut plus sortir au clavier`, `Un lien qui ouvre une fenêtre`, `Une touche qui ne marche pas`], 1,
+      `L’utilisateur reste coincé et doit souvent recharger la page.`),
+    Q(`Un raccourci clavier d’une seule touche doit…`,
+      [`être affiché en rouge`, `pouvoir être désactivé ou modifié`, `fonctionner uniquement sur mobile`, `être interdit`], 1,
+      `Il peut se déclencher par erreur, notamment avec la commande vocale.`)
+  ]
+});
+
+chapter({
+  id: 'consultation',
+  title: 'Consultation',
+  theme: 'Thématique RGAA 13 · 12 critères',
+  short: 'Limites de temps, documents, animations, gestes et orientation : consulter sans obstacle.',
+  pages: [
+    pg('Laisser le temps',
+      CRIT('13.1', `Pour chaque page web, l’utilisateur a-t-il le contrôle de chaque limite de temps modifiant le contenu ?`),
+      P(`Lire lentement, taper d’une seule main, utiliser un lecteur d’écran : tout prend plus de temps. Une session qui expire sans prévenir fait perdre un formulaire entier.`),
+      DO(`Prévenir avant l’expiration et permettre de prolonger d’une action simple, comme le message « Votre session va expirer dans 2 minutes. Rester connecté ? » courant sur les sites bancaires.`),
+      P(`Exceptions : les événements en temps réel (une enchère) et les limites essentielles à l’activité.`)
+    ),
+    pg('Fenêtres et documents',
+      CRIT('13.2', `L’ouverture d’une nouvelle fenêtre ne doit pas être déclenchée sans action de l’utilisateur.`),
+      CRIT('13.3', `Chaque document bureautique en téléchargement possède-t-il, si nécessaire, une version accessible ?`),
+      CRIT('13.4', `Cette version accessible offre-t-elle la même information ?`),
+      DONT(`Une carte de restaurant ou des conditions générales en PDF scanné : une simple image, muette pour un lecteur d’écran.`),
+      DO(`Un PDF balisé (titres, ordre de lecture, alternatives), ou mieux, la même information directement en page web.`)
+    ),
+    pg('Ce qui bouge et ce qui clignote',
+      CRIT('13.7', `Les changements brusques de luminosité ou les effets de flash sont-ils correctement utilisés ?`),
+      CRIT('13.8', `Chaque contenu en mouvement ou clignotant est-il contrôlable par l’utilisateur ?`),
+      P(`Plus de 3 flashs par seconde peuvent déclencher une crise chez une personne épileptique photosensible. Les animations gênent aussi les personnes ayant des troubles de l’attention ou de l’équilibre.`),
+      DONT(`Un carrousel qui défile tout seul, sans bouton pause.`),
+      DO(`Un bouton pause visible, et le respect du réglage « réduire les animations » du système.`)
+    ),
+    pg('Des exemples connus',
+      REAL('Slack', `Un réglage permet de désactiver les images animées et les emojis animés.`),
+      REAL('iOS, Android, macOS, Windows', `Tous proposent un réglage pour réduire les animations. Les sites peuvent le détecter et adapter leurs effets.`),
+      CRIT('13.5', `Chaque contenu cryptique (art ASCII, émoticône, syntaxe cryptique) a-t-il une alternative ?`),
+      CRIT('13.6', `Cette alternative est-elle pertinente ?`),
+      P(`Un lecteur d’écran lit les emojis par leur nom. « 🔥🔥🔥 Promo 🚀 » devient « feu feu feu promo fusée ». À doser.`)
+    ),
+    pg('Orientation et gestes',
+      CRIT('13.9', `Le contenu est-il consultable quelle que soit l’orientation de l’écran, portrait ou paysage ?`),
+      CRIT('13.10', `Les fonctionnalités utilisables par un geste complexe le sont-elles aussi par un geste simple ?`),
+      UL([
+        `<strong>Orientation</strong> : une tablette fixée à un fauteuil roulant ne pivote pas. Le contenu doit fonctionner dans les deux sens.`,
+        `<strong>Gestes</strong> : le pincement pour zoomer sur une carte a son équivalent en boutons + et −, comme sur Google Maps.`
+      ])
+    ),
+    pg('Annuler un geste, bouger l’appareil',
+      CRIT('13.11', `Les actions déclenchées en touchant un point de l’écran peuvent-elles être annulées ?`),
+      CRIT('13.12', `Les fonctionnalités qui demandent de bouger l’appareil ont-elles une alternative ?`),
+      UL([
+        `<strong>Annulation</strong> : l’action se déclenche quand on relâche le doigt, pas quand on le pose. On peut ainsi glisser hors du bouton pour renoncer.`,
+        `<strong>Mouvement</strong> : « secouer pour annuler » sur iPhone peut être désactivé dans les réglages d’accessibilité, et l’action reste disponible autrement.`
+      ])
+    )
+  ],
+  quiz: [
+    Q(`Une session expire après 10 minutes d’inactivité. Quelle est la bonne pratique ?`,
+      [`Ne rien faire`, `Prévenir avant l’expiration et permettre de prolonger simplement`, `Rallonger à 11 minutes`, `Recharger la page sans prévenir`], 1,
+      `L’utilisateur garde la main et ne perd pas ce qu’il a saisi.`),
+    Q(`Un carrousel défile automatiquement. Que faut-il ?`,
+      [`Le rendre plus rapide`, `Pouvoir le mettre en pause`, `Ajouter du son`, `Rien`], 1,
+      `Tout contenu en mouvement doit pouvoir être arrêté.`),
+    Q(`Les conditions générales sont un PDF scanné. Quel est le problème ?`,
+      [`Le fichier est trop lourd`, `C’est une image : un lecteur d’écran ne peut pas le lire`, `Le PDF est interdit`, `Il n’y a pas de problème`], 1,
+      `Il faut un PDF balisé, ou mieux, le contenu en page web.`),
+    Q(`Une carte se zoome uniquement en pinçant à deux doigts. Que faut-il ajouter ?`,
+      [`Des boutons + et −`, `Une animation`, `Un tutoriel vidéo`, `Rien`], 0,
+      `Un geste complexe doit avoir un équivalent par geste simple.`),
+    Q(`Combien de flashs par seconde faut-il éviter de dépasser ?`,
+      [`1`, `3`, `10`, `30`], 1,
+      `Au-delà de 3 flashs par seconde, le risque de crise d’épilepsie photosensible augmente.`)
+  ]
+});
+
+chapter({
+  id: 'mobile',
+  title: 'Et sur mobile ?',
+  short: 'Les mêmes principes dans une app native, avec d’autres outils et quelques pièges propres au tactile.',
+  pages: [
+    pg('Mêmes principes, autres outils',
+      P(`Les principes sont les mêmes dans une app iOS ou Android. Ce qui change, ce sont les outils : VoiceOver et TalkBack se pilotent par gestes. On balaie pour passer d’un élément à l’autre, on touche deux fois pour activer.`),
+      P(`En Europe, la norme EN 301 549 couvre déjà les applications, dans sa partie consacrée aux logiciels. Le RGAA 5 les intégrera explicitement.`)
+    ),
+    pg('Les blocages fréquents',
+      UL([
+        `Boutons-icônes sans intitulé, annoncés « bouton » sans plus.`,
+        `Textes qui ne grandissent pas avec le réglage du système, ou qui se coupent.`,
+        `Cibles tactiles trop petites ou trop serrées.`,
+        `Ordre de lecture incohérent pour le lecteur d’écran.`,
+        `Gestes complexes sans alternative.`,
+        `Écran bloqué en mode portrait.`
+      ])
+    ),
+    pg('La taille des cibles',
+      UL([
+        `Apple recommande des cibles d’au moins <strong>44 × 44 points</strong>.`,
+        `Material Design, pour Android, recommande <strong>48 × 48 dp</strong>.`,
+        `Les WCAG 2.2 fixent un minimum de <strong>24 × 24 pixels CSS</strong> au niveau AA, que le RGAA 5 devrait reprendre.`
+      ]),
+      P(`Pense aux personnes qui ont des tremblements, aux gros doigts, et à l’usage d’une seule main dans les transports.`)
+    ),
+    pg('Tester une app',
+      UL([
+        `Activer VoiceOver ou TalkBack et faire le parcours principal.`,
+        `Passer la taille du texte au maximum dans les réglages.`,
+        `Tourner l’appareil en mode paysage.`,
+        `Outils : Accessibility Inspector (Xcode, pour iOS) et Accessibility Scanner (Android).`
+      ]),
+      PO(`Dans le design system mobile, chaque composant porte son intitulé accessible dans la maquette, au même titre que sa couleur ou sa taille.`)
+    )
+  ],
+  quiz: [
+    Q(`Quelle taille minimale de cible les WCAG 2.2 fixent-elles au niveau AA ?`,
+      [`10 × 10 pixels CSS`, `24 × 24 pixels CSS`, `100 × 100 pixels CSS`, `Aucune`], 1,
+      `24 × 24 pixels CSS au minimum. Apple et Google recommandent plus grand : 44 points et 48 dp.`),
+    Q(`Avec VoiceOver activé, comment active-t-on l’élément sélectionné ?`,
+      [`Par un simple toucher`, `Par un double toucher`, `En secouant l’appareil`, `Par un appui très long`], 1,
+      `Un premier toucher ou un balayage sélectionne et fait lire l’élément, un double toucher l’active.`),
+    Q(`Quelle norme couvre déjà les applications mobiles en Europe ?`,
+      [`EN 301 549`, `ISO 27001`, `RGPD`, `HTML5`], 0,
+      `La norme européenne couvre le web, les logiciels et les applications.`)
+  ]
+});
+
+chapter({
+  id: 'role-po',
+  title: 'Le PO en action',
+  short: 'De la découverte à la recette : où et comment faire entrer l’accessibilité dans ton quotidien de PO.',
+  pages: [
+    pg('Plus tôt, moins cher',
+      P(`Un défaut d’accessibilité repéré sur une maquette se corrige en quelques minutes. En recette, en quelques heures. En production, après un audit ou une plainte, il peut coûter un sprint entier.`),
+      P(`Le PO est la personne qui peut faire entrer l’accessibilité à chaque étape : besoin, conception, user stories, recette, priorisation.`)
+    ),
+    pg('Qui fait quoi',
+      UL([
+        `<strong>PO</strong> : exige, priorise, vérifie en recette, arbitre.`,
+        `<strong>UX et UI</strong> : couleurs, focus, ordre de lecture, intitulés, états ; annote les maquettes.`,
+        `<strong>Dev</strong> : code sémantique, composants accessibles, tests automatiques.`,
+        `<strong>QA</strong> : tests au clavier, au lecteur d’écran, avec les outils.`,
+        `<strong>Contenu</strong> : alternatives, titres, liens, sous-titres.`,
+        `<strong>Achats et juridique</strong> : clauses dans les contrats, déclaration d’accessibilité.`
+      ]),
+      P(`Un référent accessibilité dans l’équipe accélère tout. C’est souvent un rôle confié à une personne motivée, pas forcément un poste à part.`)
+    ),
+    pg('En découverte et en conception',
+      UL([
+        `Inclure des personnes handicapées dans les tests utilisateurs.`,
+        `Annoter les maquettes : niveaux de titres, alternatives, ordre du focus, intitulés des boutons-icônes, messages d’erreur, états.`,
+        `Valider une fois pour toutes les composants du design system.`,
+        `Vérifier contrastes et tailles de cible avant le passage aux devs.`
+      ]),
+      PO(`Ajoute une rubrique « accessibilité » à ta checklist de revue de maquette. Elle ne prend que quelques minutes et évite des allers-retours en recette.`)
+    ),
+    pg('Écrire des US accessibles',
+      P(`L’accessibilité se glisse dans les critères d’acceptation de chaque US, pas dans une US à part intitulée « rendre accessible ».`),
+      GH(`Étant donné que je navigue au clavier
+Quand j’ouvre la fenêtre « Ajouter une adresse »
+Alors le focus est placé dans la fenêtre
+Et la touche Échap la ferme
+Et le focus revient sur le bouton « Ajouter une adresse »`)
+    ),
+    pg('D’autres critères types',
+      GH(`Étant donné que j’utilise un lecteur d’écran
+Quand j’ajoute un produit au panier
+Alors le message « Produit ajouté, 3 articles dans le panier » est annoncé
+Et le focus reste sur le bouton`),
+      UL([
+        `« Chaque image informative a une alternative validée par l’équipe contenu. »`,
+        `« Le parcours se fait entièrement au clavier, avec un focus toujours visible. »`,
+        `« Le titre de la page indique l’étape en cours. »`,
+        `« Les erreurs sont décrites en texte et annoncées. »`
+      ])
+    ),
+    pg('La Definition of Done',
+      P(`Une DoD accessibilité courte, appliquée à chaque US qui touche l’interface :`),
+      UL([
+        `Contrastes conformes : 4,5:1 pour le texte, 3:1 pour les composants.`,
+        `Parcours testé au clavier, focus visible, aucun piège.`,
+        `Titres et zones de la page structurés.`,
+        `Images et icônes avec des alternatives pertinentes.`,
+        `Formulaires : étiquettes, erreurs en texte, remplissage automatique.`,
+        `Messages de statut annoncés.`,
+        `Zoom à 200 % et largeur de 320 px sans perte.`,
+        `Aucune erreur remontée par l’outil automatique.`,
+        `Test rapide au lecteur d’écran sur le parcours modifié.`
+      ])
+    ),
+    pg('Tester en recette',
+      P(`Les outils automatiques (axe, WAVE, Lighthouse) ne repèrent qu’une partie des problèmes. Ils voient qu’une image a une alternative, pas si elle est pertinente.`),
+      UL([
+        `<strong>Outil automatique</strong> : deux minutes par page.`,
+        `<strong>Clavier seul</strong> : une dizaine de minutes par parcours.`,
+        `<strong>Lecteur d’écran</strong> : sur les parcours critiques.`,
+        `<strong>Zoom à 200 % et affichage mobile</strong> : sur chaque nouvel écran.`,
+        `<strong>Audit par un expert</strong> : régulièrement, et avant chaque refonte.`
+      ])
+    ),
+    pg('Prioriser les défauts',
+      P(`Tous les défauts ne se valent pas. Classe-les d’abord par impact sur l’utilisateur, puis par fréquence.`),
+      UL([
+        `<strong>Bloquant</strong> : impossible de finir la tâche. Paiement inaccessible au clavier, CAPTCHA sans alternative.`,
+        `<strong>Majeur</strong> : la tâche est possible mais très pénible. Erreurs non annoncées, absence de titres.`,
+        `<strong>Mineur</strong> : une gêne ponctuelle. Alternative perfectible.`
+      ]),
+      P(`Commence par les parcours critiques : connexion, recherche, fiche produit, panier, paiement, contact.`),
+      PO(`Un composant du design system corrigé règle le défaut sur toutes les pages qui l’utilisent. Ce sont les corrections les plus rentables.`)
+    ),
+    pg('Audit et déclaration',
+      P(`Un audit RGAA porte sur un échantillon : accueil, contact, mentions légales, page accessibilité, plan du site, aide, connexion, pages représentatives, et toutes les étapes des parcours principaux.`),
+      P(`Il produit un taux de conformité et la liste des non-conformités, qui nourrissent la déclaration d’accessibilité. Vient ensuite le plan d’action, que le PO pilote comme n’importe quelle roadmap.`)
+    ),
+    pg('Prestataires et outils tiers',
+      UL([
+        `Inscrire la conformité RGAA (ou WCAG 2.1 AA) dans les cahiers des charges et les contrats.`,
+        `Demander la déclaration d’accessibilité d’un logiciel ou d’un module avant de l’acheter.`,
+        `Prévoir la recette accessibilité dans le planning du prestataire.`,
+        `Inclure la correction des non-conformités dans la garantie.`
+      ]),
+      PO(`Ce que tu intègres (paiement, chat, avis, carte), tu en réponds auprès des utilisateurs et des autorités de contrôle.`)
+    ),
+    pg('Quelques indicateurs',
+      UL([
+        `Taux de conformité RGAA, à chaque audit.`,
+        `Nombre de défauts bloquants ouverts.`,
+        `Part des US qui ont des critères d’acceptation d’accessibilité.`,
+        `Délai moyen de correction d’un défaut bloquant.`,
+        `Demandes reçues par le contact accessibilité.`
+      ])
+    ),
+    pg('Et l’IA ?',
+      P(`L’IA aide vraiment : proposer des alternatives pour un gros catalogue, relire du code, rédiger des critères d’acceptation, expliquer un critère du RGAA.`),
+      P(`Elle ne remplace ni le test humain, ni l’avis des personnes concernées. Elle ne sait pas si une alternative sert l’intention de la page, ni si un parcours est réellement utilisable au lecteur d’écran.`)
+    )
+  ],
+  quiz: [
+    Q(`Où placer les exigences d’accessibilité dans le backlog ?`,
+      [`Dans une US unique « rendre le site accessible » en fin de projet`, `Dans les critères d’acceptation de chaque US`, `Dans le cahier des charges uniquement`, `Nulle part, c’est le travail des développeurs`], 1,
+      `Intégrées à chaque US, elles sont conçues, développées et testées en même temps que la fonctionnalité.`),
+    Q(`L’outil automatique ne signale aucune erreur. Que conclure ?`,
+      [`La page est conforme`, `Il faut quand même tester au clavier et au lecteur d’écran`, `L’outil est en panne`, `Un audit est inutile`], 1,
+      `Les outils automatiques ne détectent qu’une partie des problèmes.`),
+    Q(`Lequel de ces défauts est bloquant ?`,
+      [`Une alternative d’image perfectible`, `Un bouton « Payer » inaccessible au clavier`, `Un lien un peu long`, `Un titre de page trop générique`], 1,
+      `La personne ne peut pas finir sa commande : c’est la priorité absolue.`),
+    Q(`Pourquoi prioriser les corrections dans le design system ?`,
+      [`Parce que c’est plus simple à recetter`, `Parce qu’une correction profite à toutes les pages qui utilisent le composant`, `Parce que les auditeurs ne regardent que lui`, `Parce que c’est obligatoire`], 1,
+      `Un seul correctif, des dizaines de pages réparées.`),
+    Q(`Le module de paiement d’un prestataire n’est pas accessible. Qui en répond ?`,
+      [`Le prestataire seul`, `Ton service aussi`, `Personne`, `La banque de l’utilisateur`], 1,
+      `Pour l’utilisateur et pour l’autorité de contrôle, c’est ton service qui est inaccessible.`),
+    Q(`Quand annoter les maquettes (titres, ordre du focus, alternatives) ?`,
+      [`Après la mise en production`, `Avant le passage aux développeurs`, `Pendant l’audit`, `Jamais, c’est inutile`], 1,
+      `C’est le moment où une correction coûte le moins cher.`)
+  ]
+});
+
+chapter({
+  id: 'aller-plus-loin',
+  title: 'Aller plus loin',
+  finalQuiz: true,
+  short: 'Ressources, outils, certifications, une routine pour progresser, et le quiz final.',
+  pages: [
+    pg('Les ressources de référence',
+      UL([
+        A('https://accessibilite.numerique.gouv.fr/', 'RGAA officiel') + ` : critères, tests, glossaire, modèles.`,
+        A('https://www.w3.org/WAI/', 'W3C WAI') + ` : les WCAG expliquées, des témoignages, un cours gratuit (en anglais).`,
+        A('https://www.w3.org/WAI/ARIA/apg/', 'ARIA Authoring Practices Guide') + ` : le comportement attendu de chaque composant.`,
+        A('https://www.fun-mooc.fr/en/categories/subjects/digital-and-technology/digital-accessibility/', 'MOOC Inria sur FUN') + ` : les bases, gratuitement.`,
+        A('https://www.accede-web.com/', 'AcceDe Web') + ` : notices pratiques pour le graphisme, le contenu et le code.`,
+        A('https://a11y-guidelines.orange.com/', 'Guide accessibilité d’Orange') + ` : bonnes pratiques par métier.`,
+        A('https://www.systeme-de-design.gouv.fr/', 'Système de design de l’État') + ` et ` + A('https://design-system.service.gov.uk/', 'GOV.UK Design System') + ` : des composants de référence.`
+      ])
+    ),
+    pg('Les outils à installer',
+      UL([
+        `<strong>Lecteurs d’écran</strong> : VoiceOver (Mac, iPhone), TalkBack (Android), NVDA (Windows, gratuit).`,
+        `<strong>Contraste</strong> : Colour Contrast Analyser, plugins Figma.`,
+        `<strong>Tests automatiques</strong> : axe DevTools, WAVE, Lighthouse.`,
+        `<strong>Structure</strong> : HeadingsMap pour le plan des titres.`,
+        `<strong>Mobile</strong> : Accessibility Inspector (iOS), Accessibility Scanner (Android).`
+      ])
+    ),
+    pg('Se certifier',
+      UL([
+        `<strong>Access42</strong> : la certification « Auditer l’accessibilité numérique avec le RGAA », enregistrée à France Compétences et finançable par le CPF.`,
+        `<strong>IAAP CPACC</strong> : certification internationale des fondamentaux, en anglais, à renouveler tous les 3 ans.`,
+        `<strong>Formation PO d’Access42</strong> : deux jours pour intégrer l’accessibilité dans la gestion de projet.`
+      ]),
+      P(`Pour un PO, la certification n’est pas indispensable. Elle compte si tu vises un rôle de référent ou d’expert.`)
+    ),
+    pg('Ta routine de progression',
+      UL([
+        `<strong>Chaque semaine</strong> : un parcours testé au clavier, sur ton produit ou un site que tu utilises.`,
+        `<strong>Chaque mois</strong> : une heure au lecteur d’écran.`,
+        `<strong>À chaque affinage du backlog</strong> : une question accessibilité par US.`,
+        `<strong>En veille</strong> : le RGAA 5, la conférence Paris Web, les rapports WebAIM.`,
+        `<strong>Toujours</strong> : écouter les personnes concernées, par des témoignages, des associations, des tests utilisateurs.`
+      ])
+    ),
+    pg('Sources de ce guide',
+      UL([
+        A('https://webaim.org/projects/million/', 'WebAIM Million 2026') + ` : erreurs sur le million de pages d’accueil les plus visitées.`,
+        A('https://webaim.org/blog/screen-reader-user-survey-10-results/', 'WebAIM, enquête n° 10') + ` auprès des utilisateurs de lecteur d’écran.`,
+        A('https://www.who.int/news-room/fact-sheets/detail/disability-and-health', 'OMS') + ` : chiffres mondiaux du handicap.`,
+        A('https://accessibilite.numerique.gouv.fr/', 'RGAA 4.1.2') + ` : critères et tests.`,
+        A('https://donneespersonnelles.fr/accessibilite-numerique-entreprises', 'Obligations des entreprises') + ` : périmètre, exemptions, sanctions.`,
+        A('https://www.binclusive.io/en/blog/rgaa-5-france-digital-accessibility-standard', 'Binclusive') + ` : ce que change le RGAA 5.`,
+        A('https://www.wawsome.com/blog/carrefour-digital-accessibility-lawsuit-eaa', 'Décision Carrefour') + ` : le jugement de Caen.`
+      ]),
+      P(`Les intitulés de critères sont parfois simplifiés. Seul le texte officiel du RGAA fait foi.`)
+    )
+  ],
+  quiz: [
+    Q(`Une icône loupe est seule dans le bouton de recherche. Quelle alternative ?`,
+      [`« Loupe »`, `« Rechercher »`, `Une alternative vide`, `« Icône »`], 1,
+      `L’alternative d’une icône dans un bouton décrit l’action, pas le dessin.`),
+    Q(`Quel contraste minimum pour un texte de 24 px ?`,
+      [`2:1`, `3:1`, `4,5:1`, `7:1`], 1,
+      `À partir de 24 px (ou 18,5 px en gras), le seuil descend à 3:1.`),
+    Q(`« Commande enregistrée » apparaît sans que le focus bouge. Que vérifies-tu ?`,
+      [`Sa couleur`, `Qu’il est annoncé par le lecteur d’écran`, `Qu’il clignote`, `Qu’il ouvre une nouvelle fenêtre`], 1,
+      `C’est un message de statut (critère 7.5).`),
+    Q(`Quel test fais-tu en premier, sans aucun outil ?`,
+      [`Un audit RGAA complet`, `Le parcours au clavier seul`, `Une analyse du code source`, `Une enquête utilisateurs`], 1,
+      `Dix minutes de clavier révèlent beaucoup de blocages graves.`),
+    Q(`Une vidéo de démonstration sans paroles montre des manipulations à l’écran. Il faut…`,
+      [`des sous-titres seulement`, `une audiodescription ou une transcription qui décrit les actions`, `rien, il n’y a pas de dialogue`, `un bouton pour couper le son`], 1,
+      `Une personne aveugle doit savoir ce qui est montré.`),
+    Q(`Un site marchand de 50 salariés en 2026 est-il concerné par l’European Accessibility Act ?`,
+      [`Oui`, `Non, seulement le secteur public`, `Non, seulement au-delà de 250 salariés`, `Seulement à partir de 2030`], 0,
+      `L’exemption ne vise que les très petites entreprises : moins de 10 personnes et au plus 2 M€ de chiffre d’affaires ou de bilan.`),
+    Q(`Quel titre de page pour un panier ?`,
+      [`« MaBoutique »`, `« Panier (3 articles) – MaBoutique »`, `« Page 4 »`, `« Bienvenue »`], 1,
+      `Il dit où l’on est et l’état utile, puis le nom du site.`),
+    Q(`Où doivent figurer les exigences d’accessibilité d’une nouvelle fonctionnalité ?`,
+      [`Dans une US séparée, plus tard`, `Dans ses critères d’acceptation et dans la Definition of Done`, `Dans la déclaration d’accessibilité`, `Dans le rapport d’audit`], 1,
+      `C’est là qu’elles sont conçues, développées et vérifiées avec la fonctionnalité.`)
+  ]
+});
+
+</script>
+
+<script>
+(function () {
+  const STORE = 'a11y-po-ebook-v1';
+  const state = { idx: 0, answers: {} };
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (s && typeof s === 'object') {
+      state.idx = Number(s.idx) || 0;
+      state.answers = (s.answers && typeof s.answers === 'object') ? s.answers : {};
+    }
+  } catch (e) {}
+  const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {} };
+
+  let n = 0;
+  BOOK.forEach(c => { c.quiz = c.quiz || []; c.num = c.unnumbered ? null : ++n; });
+
+  const seq = [{ type: 'cover', hash: 'couverture' }];
+  BOOK.forEach((c, ci) => {
+    seq.push({ type: 'intro', ci, hash: c.id });
+    c.pages.forEach((p, pi) => seq.push({ type: 'page', ci, pi, hash: c.id + '-' + (pi + 1) }));
+    c.quiz.forEach((q, qi) => seq.push({ type: 'quiz', ci, qi, hash: c.id + '-quiz-' + (qi + 1) }));
+    if (c.quiz.length) seq.push({ type: 'result', ci, hash: c.id + '-bilan' });
+  });
+  seq.push({ type: 'end', hash: 'bilan-final' });
+  const total = seq.length;
+  const savedIdx = Math.min(Math.max(0, state.idx), total - 1);
+  let idx = 0;
+
+  const $ = s => document.querySelector(s);
+  const main = $('#content'), prevB = $('#prev'), nextB = $('#next'), counter = $('#counter');
+  const bar = $('#bar'), chapLabel = $('#chap-label'), progressText = $('#progress-text');
+  const toc = $('#toc'), tocList = $('#toc-list');
+
+  const key = (ci, qi) => ci + '-' + qi;
+  const idxOf = (ci, type, i) => seq.findIndex(v => v.ci === ci && v.type === type && (i === undefined || v.pi === i || v.qi === i));
+  const label = c => c.num ? 'Chapitre ' + c.num + ' · ' + c.title : c.title;
+  const score = ci => {
+    const c = BOOK[ci]; let ok = 0, done = 0;
+    c.quiz.forEach((q, qi) => { const a = state.answers[key(ci, qi)]; if (a !== undefined) { done++; if (a === q.a) ok++; } });
+    return { ok, done, total: c.quiz.length };
+  };
+
+  function viewCover() {
+    const pages = BOOK.reduce((s, c) => s + c.pages.length, 0);
+    const qs = BOOK.reduce((s, c) => s + c.quiz.length, 0);
+    const chs = BOOK.filter(c => c.num).length;
+    const resume = savedIdx > 0
+      ? '<button class="btn primary" type="button" data-go="' + savedIdx + '">Reprendre à la page ' + (savedIdx + 1) + '</button><button class="btn" type="button" data-go="1">Lire depuis le début</button>'
+      : '<button class="btn primary" type="button" data-go="1">Commencer la lecture</button>';
+    return '<article class="page cover">' +
+      '<p class="eyebrow">Guide interactif · RGAA 4.1.2</p>' +
+      '<h1 id="page-title" tabindex="-1">Accessibilité numérique : le guide du PO</h1>' +
+      '<p class="lede">Ce qu’un Product Owner doit savoir pour concevoir, spécifier et recetter des services accessibles. En pages courtes, avec des exemples tirés de sites et d’apps connus, et un quiz à chaque chapitre.</p>' +
+      '<ul class="facts">' +
+      '<li><strong>' + chs + '</strong> chapitres</li>' +
+      '<li><strong>13</strong> thématiques du RGAA</li>' +
+      '<li><strong>' + pages + '</strong> pages d’une minute</li>' +
+      '<li><strong>' + qs + '</strong> questions de quiz</li>' +
+      '</ul>' +
+      '<div class="actions">' + resume + '<button class="btn" type="button" data-toc>Voir le sommaire</button></div>' +
+      '<p class="small">À jour en novembre 2026. Basé sur le RGAA 4.1.2 et les WCAG 2.1 et 2.2. Ta progression et tes réponses restent dans ce navigateur.</p>' +
+      '</article>';
+  }
+
+  function viewIntro(ci) {
+    const c = BOOK[ci], nq = c.quiz.length;
+    const items = c.pages.map((p, pi) => '<li><button class="linkish" type="button" data-go="' + idxOf(ci, 'page', pi) + '">' + p.t + '</button></li>').join('') +
+      (nq ? '<li><button class="linkish" type="button" data-go="' + idxOf(ci, 'quiz', 0) + '">Quiz\u00A0: ' + nq + ' questions</button></li>' : '');
+    const mins = Math.max(2, Math.round(c.pages.length + nq * 0.5));
+    return '<article class="page intro">' +
+      '<p class="eyebrow">' + (c.num ? 'Chapitre ' + c.num : 'Avant de commencer') + '</p>' +
+      '<h1 id="page-title" tabindex="-1">' + c.title + '</h1>' +
+      (c.theme ? '<p class="theme-chip">' + c.theme + '</p>' : '') +
+      '<p class="lede">' + c.short + '</p>' +
+      '<h2 class="h-small">Au programme</h2><ol class="toc-pages">' + items + '</ol>' +
+      '<p class="small">' + c.pages.length + ' pages' + (nq ? ' · ' + nq + ' questions' : '') + ' · environ ' + mins + ' min</p>' +
+      '</article>';
+  }
+
+  function viewPage(ci, pi) {
+    const c = BOOK[ci], p = c.pages[pi];
+    return '<article class="page">' +
+      '<p class="eyebrow">' + label(c) + ' · page ' + (pi + 1) + ' sur ' + c.pages.length + '</p>' +
+      '<h1 id="page-title" tabindex="-1">' + p.t + '</h1>' +
+      '<div class="body">' + p.h + '</div></article>';
+  }
+
+  function feedback(q, ans) {
+    const ok = ans === q.a;
+    return '<div class="feedback ' + (ok ? 'ok' : 'ko') + '" id="feedback" tabindex="-1">' +
+      '<p class="fb-title"><span aria-hidden="true">' + (ok ? '✓ ' : '✕ ') + '</span>' + (ok ? 'Bonne réponse' : 'Pas tout à fait') + '</p>' +
+      (ok ? '' : '<p>La bonne réponse\u00A0: <strong>' + q.o[q.a] + '</strong></p>') +
+      '<p>' + q.e + '</p></div>';
+  }
+
+  // Ordre d'affichage des réponses : mélangé de façon stable, sauf pour les échelles numériques
+  function order(q) {
+    if (q._p) return q._p;
+    const a = q.o.map((_, i) => i);
+    const numeric = q.o.filter(o => /^\d/.test(o)).length >= 3;
+    if (!numeric) {
+      let s = 7;
+      for (const ch of q.q) s = (Math.imul(s, 31) + ch.charCodeAt(0)) | 0;
+      const rnd = () => {
+        s = (s + 0x6D2B79F5) | 0;
+        let t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        const t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+    }
+    q._p = a;
+    return a;
+  }
+
+  function viewQuiz(ci, qi) {
+    const c = BOOK[ci], q = c.quiz[qi], ans = state.answers[key(ci, qi)], answered = ans !== undefined;
+    const opts = order(q).map(oi => {
+      const o = q.o[oi];
+      let cls = '', tag = '';
+      if (answered && oi === q.a) { cls = ' is-right'; tag = '<span class="opt-tag">Bonne réponse</span>'; }
+      else if (answered && oi === ans) { cls = ' is-wrong'; tag = '<span class="opt-tag">Ta réponse</span>'; }
+      return '<div class="opt' + cls + '"><input type="radio" name="answer" id="opt-' + oi + '" value="' + oi + '"' +
+        (answered ? ' disabled' : '') + (ans === oi ? ' checked' : '') + '><label for="opt-' + oi + '"><span>' + o + '</span>' + tag + '</label></div>';
+    }).join('');
+    return '<article class="page quiz">' +
+      '<p class="eyebrow">Quiz · ' + label(c) + '</p>' +
+      '<h1 id="page-title" tabindex="-1">Question ' + (qi + 1) + ' sur ' + c.quiz.length + '</h1>' +
+      '<form id="quiz-form" novalidate><fieldset><legend>' + q.q + '</legend>' + opts + '</fieldset>' +
+      (answered ? '' : '<p class="form-error" id="quiz-error" hidden>Choisis une réponse avant de valider.</p><button type="submit" class="btn primary">Valider ma réponse</button>') +
+      '</form>' + (answered ? feedback(q, ans) : '') + '</article>';
+  }
+
+  function message(ok, tot) {
+    const r = tot ? ok / tot : 0;
+    if (r >= 0.8) return 'Très bien : ce chapitre est acquis.';
+    if (r >= 0.5) return 'Bon début. Relis les explications des questions à revoir avant de continuer.';
+    return 'Prends le temps de relire le chapitre : les explications de chaque question t’aideront.';
+  }
+
+  function viewResult(ci) {
+    const c = BOOK[ci], s = score(ci);
+    const rows = c.quiz.map((q, qi) => {
+      const a = state.answers[key(ci, qi)];
+      const st = a === undefined ? ['r-none', 'Sans réponse'] : (a === q.a ? ['r-ok', 'Juste'] : ['r-ko', 'À revoir']);
+      return '<li class="' + st[0] + '"><span class="r-status">' + st[1] + '</span><button class="linkish" type="button" data-go="' + idxOf(ci, 'quiz', qi) + '">' + q.q + '</button></li>';
+    }).join('');
+    return '<article class="page result">' +
+      '<p class="eyebrow">' + label(c) + '</p>' +
+      '<h1 id="page-title" tabindex="-1">' + (c.finalQuiz ? 'Bilan du quiz final' : 'Bilan du chapitre') + '</h1>' +
+      '<p class="score"><span class="score-v">' + s.ok + ' / ' + s.total + '</span>bonnes réponses' + (s.done < s.total ? ' (' + (s.total - s.done) + ' sans réponse)' : '') + '</p>' +
+      '<p>' + message(s.ok, s.total) + '</p>' +
+      '<h2 class="h-small">Détail des questions</h2><ol class="result-list">' + rows + '</ol>' +
+      '<div class="actions"><button class="btn" type="button" data-reset="' + ci + '">Refaire ce quiz</button>' +
+      '<button class="btn" type="button" data-go="' + idxOf(ci, 'intro') + '">Revoir le chapitre</button></div></article>';
+  }
+
+  function viewEnd() {
+    let ok = 0, tot = 0;
+    const rows = BOOK.map((c, ci) => {
+      if (!c.quiz.length) return '';
+      const s = score(ci); ok += s.ok; tot += s.total;
+      return '<tr><th scope="row">' + (c.num ? c.num + '. ' : '') + c.title + '</th><td>' + s.ok + ' / ' + s.total + '</td></tr>';
+    }).join('');
+    return '<article class="page end">' +
+      '<p class="eyebrow">Fin du guide</p>' +
+      '<h1 id="page-title" tabindex="-1">Bilan final</h1>' +
+      '<p class="score"><span class="score-v">' + ok + ' / ' + tot + '</span>bonnes réponses sur l’ensemble des quiz</p>' +
+      '<p>' + message(ok, tot) + ' La suite se joue sur le terrain : un parcours testé au clavier chaque semaine, et l’accessibilité dans chaque critère d’acceptation.</p>' +
+      '<div class="table-wrap"><table><caption>Score par chapitre</caption><thead><tr><th scope="col">Chapitre</th><th scope="col">Score</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="actions"><button class="btn" type="button" data-toc>Ouvrir le sommaire</button><button class="btn" type="button" data-reset-all>Effacer toutes mes réponses</button></div>' +
+      '</article>';
+  }
+
+  function render(focus, dir) {
+    const v = seq[idx];
+    let html;
+    if (v.type === 'cover') html = viewCover();
+    else if (v.type === 'intro') html = viewIntro(v.ci);
+    else if (v.type === 'page') html = viewPage(v.ci, v.pi);
+    else if (v.type === 'quiz') html = viewQuiz(v.ci, v.qi);
+    else if (v.type === 'result') html = viewResult(v.ci);
+    else html = viewEnd();
+    main.innerHTML = html;
+    const art = main.querySelector('.page');
+    if (dir && art) art.classList.add(dir > 0 ? 'enter-next' : 'enter-prev');
+
+    chapLabel.textContent = v.ci !== undefined ? label(BOOK[v.ci]) : (v.type === 'end' ? 'Bilan final' : 'Couverture');
+    counter.innerHTML = '<span class="sr-only">Page </span>' + (idx + 1) + '\u00A0/\u00A0' + total;
+    const pct = Math.round(idx / (total - 1) * 100);
+    bar.style.width = pct + '%';
+    progressText.textContent = 'Progression\u00A0: ' + pct + '\u00A0%';
+    prevB.disabled = idx === 0;
+    nextB.disabled = idx === total - 1;
+    nextB.innerHTML = (v.type === 'cover' ? 'Commencer' : 'Suivant') + ' <span aria-hidden="true">→</span>';
+
+    if (location.hash.slice(1) !== v.hash) { try { history.replaceState(null, '', '#' + v.hash); } catch (e) {} }
+    if (v.type !== 'cover') { state.idx = idx; save(); }
+
+    const form = main.querySelector('#quiz-form');
+    if (form && v.type === 'quiz') {
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const checked = form.querySelector('input[name="answer"]:checked');
+        if (!checked) {
+          const err = form.querySelector('#quiz-error');
+          err.hidden = false; err.setAttribute('role', 'alert');
+          form.querySelector('input[name="answer"]').focus();
+          return;
+        }
+        state.answers[key(v.ci, v.qi)] = Number(checked.value);
+        save();
+        render(false);
+        const fb = main.querySelector('#feedback');
+        if (fb) { fb.focus(); fb.scrollIntoView({ block: 'nearest' }); }
+      });
+    }
+    if (focus) {
+      window.scrollTo(0, 0);
+      const h = main.querySelector('h1');
+      if (h) h.focus({ preventScroll: true });
+    }
+  }
+
+  function go(i, dir) {
+    i = Math.max(0, Math.min(total - 1, i));
+    if (i === idx) return;
+    const d = dir !== undefined ? dir : (i > idx ? 1 : -1);
+    idx = i;
+    render(true, d);
+  }
+
+  prevB.addEventListener('click', () => go(idx - 1, -1));
+  nextB.addEventListener('click', () => go(idx + 1, 1));
+
+  main.addEventListener('click', e => {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.hasAttribute('data-go')) go(Number(t.getAttribute('data-go')));
+    else if (t.hasAttribute('data-toc')) openToc();
+    else if (t.hasAttribute('data-reset')) {
+      const ci = Number(t.getAttribute('data-reset'));
+      BOOK[ci].quiz.forEach((q, qi) => { delete state.answers[key(ci, qi)]; });
+      save(); go(idxOf(ci, 'quiz', 0));
+    } else if (t.hasAttribute('data-reset-all')) {
+      state.answers = {}; save(); render(true);
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (toc.open) return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    const tg = e.target;
+    if (tg && tg.closest && tg.closest('input, textarea, select, [contenteditable="true"]')) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(idx + 1, 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); go(idx - 1, -1); }
+  });
+
+  let sx = null, sy = null;
+  main.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1 || e.target.closest('.table-wrap, pre')) { sx = null; return; }
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+  }, { passive: true });
+  main.addEventListener('touchend', e => {
+    if (sx === null) return;
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    sx = null;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < 50) go(idx + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+  }, { passive: true });
+
+  function currentCi() { const v = seq[idx]; return v.ci; }
+  function openToc() {
+    const cur = currentCi();
+    let html = '<li><button class="toc-item" type="button" data-go-toc="0"' + (seq[idx].type === 'cover' ? ' aria-current="true"' : '') + '><span class="toc-num"></span><span class="toc-title">Couverture</span><span class="toc-meta"></span></button></li>';
+    BOOK.forEach((c, ci) => {
+      const s = score(ci);
+      const meta = c.quiz.length ? (s.done ? s.ok + ' / ' + s.total : c.quiz.length + ' questions') : c.pages.length + ' pages';
+      const metaSr = c.quiz.length ? (s.done ? ', quiz\u00A0: ' + s.ok + ' bonnes réponses sur ' + s.total : ', quiz pas encore fait') : '';
+      html += '<li><button class="toc-item" type="button" data-go-toc="' + idxOf(ci, 'intro') + '"' + (cur === ci ? ' aria-current="true"' : '') + '>' +
+        '<span class="toc-num">' + (c.num || '') + '</span><span class="toc-title">' + c.title + '<span class="sr-only">' + metaSr + '</span></span>' +
+        '<span class="toc-meta" aria-hidden="true">' + meta + '</span></button></li>';
+    });
+    html += '<li><button class="toc-item" type="button" data-go-toc="' + (total - 1) + '"' + (seq[idx].type === 'end' ? ' aria-current="true"' : '') + '><span class="toc-num"></span><span class="toc-title">Bilan final</span><span class="toc-meta"></span></button></li>';
+    tocList.innerHTML = html;
+    if (typeof toc.showModal === 'function') toc.showModal(); else toc.setAttribute('open', '');
+    const curBtn = tocList.querySelector('[aria-current="true"]') || tocList.querySelector('button');
+    if (curBtn) { curBtn.focus(); curBtn.scrollIntoView({ block: 'center' }); }
+  }
+  function closeToc() { if (typeof toc.close === 'function') toc.close(); else toc.removeAttribute('open'); }
+  $('#toc-open').addEventListener('click', openToc);
+  $('#toc-close').addEventListener('click', closeToc);
+  toc.addEventListener('click', e => {
+    if (e.target === toc) { closeToc(); return; }
+    const b = e.target.closest('[data-go-toc]');
+    if (b) { closeToc(); const i = Number(b.getAttribute('data-go-toc')); if (i === idx) render(true); else go(i); }
+  });
+
+  function fromHash() {
+    const h = decodeURIComponent(location.hash.slice(1));
+    if (!h) return -1;
+    return seq.findIndex(v => v.hash === h);
+  }
+  window.addEventListener('hashchange', () => { const i = fromHash(); if (i >= 0 && i !== idx) go(i); });
+
+  const start = fromHash();
+  idx = start >= 0 ? start : 0;
+  render(false);
+})();
+</script>
+</body>
+</html>
